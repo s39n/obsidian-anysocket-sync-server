@@ -1,4 +1,5 @@
 const fs = require("fs");
+const fsAsync = require("fs").promises;
 
 module.exports = class DB {
     constructor(root) {
@@ -47,6 +48,10 @@ module.exports = class DB {
     }
 
     save() {
-        fs.writeFileSync(this.path, JSON.stringify(this.data), "utf8");
+        clearTimeout(this._saveTimer);
+        this._saveTimer = setTimeout(() => {
+            fsAsync.writeFile(this.path, JSON.stringify(this.data), "utf8")
+                .catch(e => console.error("[DB] Save error:", e));
+        }, 100);
     }
 }

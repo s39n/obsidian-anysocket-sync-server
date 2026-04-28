@@ -1,10 +1,19 @@
 // @ts-nocheck
 const fs = require("fs").promises;
 const fsConstants = require("fs").constants;
+const nodePath = require("path");
 
 module.exports = class FSAdapter {
     constructor(basePath) {
         this.basePath = basePath;
+        this._baseResolved = nodePath.resolve(basePath);
+    }
+
+    _validate(filePath) {
+        const resolved = nodePath.resolve(this.basePath + filePath);
+        if (!resolved.startsWith(this._baseResolved + nodePath.sep) && resolved !== this._baseResolved) {
+            throw new Error("Invalid path: " + filePath);
+        }
     }
 
     async init() {
@@ -14,6 +23,7 @@ module.exports = class FSAdapter {
     }
 
     async write(path, data, binary) {
+        this._validate(path);
         if (!await this.exists(path)) {
             let folder = path.split("/").slice(0, -1).join("/");
             if (folder) {
@@ -36,6 +46,7 @@ module.exports = class FSAdapter {
     }
 
     async read(path, binary) {
+        this._validate(path);
         try {
             if(binary) {
                 return await fs.readFile(this.basePath + path);
@@ -47,16 +58,20 @@ module.exports = class FSAdapter {
     }
 
     async exists(path) {
+        this._validate(path);
         return fs.access(this.basePath + path, fsConstants.F_OK)
             .then(() => true)
             .catch(() => false)
     }
 
     async rename(oldPath, newPath) {
+        this._validate(oldPath);
+        this._validate(newPath);
         await fs.rename(this.basePath + oldPath, this.basePath + newPath);
     }
 
     async delete(path) {
+        this._validate(path);
         return await fs.rm(this.basePath + path, {
             recursive: true,
             force: true
@@ -79,6 +94,7 @@ module.exports = class FSAdapter {
     }
 
     async iterateVersions(path) {
+        this._validate(path);
         let files = await fs.readdir(this.basePath + path, {withFileTypes: true});
         let versions = [];
         for(let item of files) {

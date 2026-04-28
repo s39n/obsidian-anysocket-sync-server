@@ -3,10 +3,7 @@ const cron = require("node-cron");
 module.exports = class SyncCleanup {
     constructor(config) {
         this.config = config;
-
-        // convert from seconds to ms
-        this.config.cleanup.keep_deleted_files_time *= 1000;
-
+        this.keepDeletedMs = config.cleanup.keep_deleted_files_time * 1000;
         this.setup();
     }
 
@@ -36,7 +33,7 @@ module.exports = class SyncCleanup {
                         }
                         break;
                     case "deleted":
-                        if (metadata.mtime + this.config.cleanup.keep_deleted_files_time < now && allDevicesLastOnline > metadata.mtime) {
+                        if (metadata.mtime + this.keepDeletedMs < now && allDevicesLastOnline > metadata.mtime) {
                             await XStorage.delete(item);
                         }
                         break;
@@ -49,18 +46,15 @@ module.exports = class SyncCleanup {
     }
 
     findMinLastOnline() {
-        let minLastOnline = -1;
-        let devices = XDB.devices.list();
+        const devices = XDB.devices.list();
+        if (devices.length === 0) {
+            return Infinity;
+        }
 
-        let lastOnline;
-        for(let id of devices) {
-            lastOnline = XDB.devices.get(id, "last_online");
-            if(minLastOnline == -1) {
-                minLastOnline = lastOnline;
-                continue;
-            }
-
-            if(minLastOnline > lastOnline) {
+        let minLastOnline = Infinity;
+        for (let id of devices) {
+            const lastOnline = XDB.devices.get(id, "last_online") || 0;
+            if (lastOnline < minLastOnline) {
                 minLastOnline = lastOnline;
             }
         }

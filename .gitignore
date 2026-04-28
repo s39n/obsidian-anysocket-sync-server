@@ -1,5 +1,6 @@
 backup/
 data/
+test-data/
 node_modules/
 certs/
 tools/
@@ -7,3 +8,4 @@ tests/
 package-lock.json
 config.js
 test_modules.js
+.claude/settings.local.json

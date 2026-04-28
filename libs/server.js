@@ -15,6 +15,8 @@ module.exports = class Server {
         this.getPeerList = () => peerList;
         this.setPeerList = (list) => { peerList = list; };
 
+        this.BUILD_INFO = JSON.parse(fs.readFileSync(this.config.app_dir + "/client/build_info.json", "utf-8"));
+
         this.server = new AnySocket();
         this.server.onAuth = (packet) => {
             return packet.auth == Helpers.getSHA(packet.id.substring(0, 16) + this.config.password + packet.id.substring(16));
@@ -24,7 +26,6 @@ module.exports = class Server {
         };
 
 
-        // HTTPS
         if(this.config.certs) {
             this.server.listen("http", {
                 key: this.config.certs.pk,
@@ -32,8 +33,9 @@ module.exports = class Server {
                 port: this.config.port,
                 host: this.config.host
             });
+        } else {
+            this.server.listen("ws", this.config.port);
         }
-        this.server.listen("ws", this.config.port);
 
 
         this.server.on("connected", (peer) => {
@@ -99,7 +101,7 @@ module.exports = class Server {
     }
 
     onVersionCheck(version, build, peer) {
-        const BUILD_INFO = JSON.parse(fs.readFileSync(this.config.app_dir + "/client/build_info.json", "utf-8"));
+        const BUILD_INFO = this.BUILD_INFO;
         if (version == BUILD_INFO.version && build == BUILD_INFO.build) {
             return {
                 type: "ok"
@@ -163,10 +165,11 @@ module.exports = class Server {
             this.debug >= 3 && console.log("[SYNC]", data);
             const files = await XStorage.iterate();
             const processedFiles = {};
+            const clientFileMap = new Map(data.map(item => [item.path, item]));
 
             // SYNC server to client
             for (let localFile of files) {
-                let foundItem = data.find((item) => item.path == localFile);
+                let foundItem = clientFileMap.get(localFile);
                 processedFiles[localFile] = 1;
 
                 if (foundItem) {
@@ -209,7 +212,7 @@ module.exports = class Server {
     }
 
     async onSyncCompleted(peer) {
-        if(peer.data.syncing == false)
+        if(peer.data.syncing === false)
             return;
 
         if (Object.keys(peer.data.files).length > 0) {
@@ -262,7 +265,7 @@ module.exports = class Server {
                     type: "send",
                     path: data.path
                 }
-            }).catch(e => console.error("ERROR:", e));;
+            }).catch(e => console.error("ERROR:", e));
             return "client_newer";
         }
 
@@ -280,7 +283,7 @@ module.exports = class Server {
                         AnySocket.Packer.pack(await XStorage.read(data.path, true)) :
                         await XStorage.read(data.path)
                 }
-            }).catch(e => console.error("ERROR:", e));;
+            }).catch(e => console.error("ERROR:", e));
             this.debug >= 2 && console.log("[SERVER][" + packet.peer.data.id + "] Updating client:", data.path);
             return "server_newer";
         }
@@ -304,7 +307,7 @@ module.exports = class Server {
                     path: data.path,
                     metadata: await XStorage.readMetadata(data.path)
                 }
-            }).catch(e => console.error("ERROR:", e));;
+            }).catch(e => console.error("ERROR:", e));
         } else if (data.type == "apply") {
             switch (data.metadata.action) {
                 case "created":
@@ -323,20 +326,20 @@ module.exports = class Server {
                     break;
             }
 
-            peerList.map(async (other) => {
+            for (let other of peerList) {
                 try {
-                    if(data.type == "apply" && other.data.autoSync) {
+                    if (data.type == "apply" && other.data.autoSync) {
                         if (other.id != packet.peer.id) {
                             other.send({
                                 type: "file_data",
                                 data: data
-                            }).catch(e => console.error("ERROR:", e));;
+                            }).catch(e => console.error("ERROR:", e));
                         }
                     }
                 } catch (e) {
                     console.log("broadcast error", e);
                 }
-            });
+            }
 
             this.debug >= 2 && console.log("[SERVER][" + packet.peer.data.id + "] Updating server:", data.path);
             if(packet.peer.data.syncing) {
