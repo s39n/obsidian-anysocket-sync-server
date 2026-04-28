@@ -3,7 +3,7 @@ services:
     image: node:alpine
     working_dir: /app
     # If 1000:100 gives you trouble, try commenting this out temporarily
-    user: "1000:100" 
+    #user: "1000:100" 
     volumes:
       - /volume1/Docker/anysync/sync_data:/app/data
       # This maps your easy-to-edit NAS file into the container
