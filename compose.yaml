@@ -4,6 +4,7 @@ services:
     working_dir: /app
     volumes:
       - /volume1/Docker/anysync/sync_data:/app/data
+      - /volume1/Docker/anysync/config.json:/app/config.json
     environment:
       - PORT=${PORT:-3000}
       - AUTH_TOKEN=${AUTH_TOKEN}
