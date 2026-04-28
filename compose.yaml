@@ -1,11 +1,8 @@
   services:
     sync-server:
-      build: /volume1/Docker/anysync/app
-      working_dir: /app
+      build: https://github.com/s39n/obsidian-anysocket-sync-server.git
       volumes:
         - /volume1/Docker/anysync/sync_data:/app/data
         - /volume1/Docker/anysync/config.js:/app/config.js
-      environment:
-        - PORT=3000
       ports:
         - "3777:3000"
