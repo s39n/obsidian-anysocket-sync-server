@@ -4,8 +4,8 @@ services:
     working_dir: /app
     user: "1000:100"
     volumes:
-      - /volume1/Docker/anysync/sync_data:/app/data
-      # REMOVED the config.json volume line here
+      - /share/Docker/AnySocket/config.js:/app/config.js
+      - /share/Docker/AnySocket/data:/app/dat
     environment:
       - PORT=3000
       - AUTH_TOKEN=${AUTH_TOKEN}
