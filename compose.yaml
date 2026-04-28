@@ -1,17 +1,11 @@
-services:
-  sync-server:
-    image: node:alpine
-    working_dir: /app
-    # If 1000:100 gives you trouble, try commenting this out temporarily
-    #user: "1000:100" 
-    volumes:
-      - /volume1/Docker/anysync/sync_data:/app/data
-      # This maps your easy-to-edit NAS file into the container
-      - /volume1/Docker/anysocket/config.json:/app/config.json
-    environment:
-      - PORT=3000
-      - AUTH_TOKEN=${AUTH_TOKEN}
-    # Simplified command since the file already exists on the NAS
-    command: npm start
-    ports:
-      - "3777:3000"
+  services:
+    sync-server:
+      build: /volume1/Docker/anysocket/app
+      working_dir: /app
+      volumes:
+        - /volume1/Docker/anysync/sync_data:/app/data
+        - /volume1/Docker/anysocket/config.js:/app/config.js
+      environment:
+        - PORT=3000
+      ports:
+        - "3777:3000"
