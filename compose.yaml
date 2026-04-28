@@ -4,7 +4,6 @@ services:
     working_dir: /app
     user: "1000:100"
     volumes:
-      - /share/Docker/AnySocket/config.js:/app/config.js
       - /share/Docker/AnySocket/data:/app/dat
     environment:
       - PORT=3000
