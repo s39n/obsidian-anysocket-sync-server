@@ -1,0 +1,16 @@
+services:
+  sync-server:
+    image: node:alpine # Or the specific build for this repo
+    working_dir: /app
+    volumes:
+      - /volume1/Docker/anysync/sync_data:/app/data
+    environment:
+      - PORT=${PORT:-3000}
+      - AUTH_TOKEN=${AUTH_TOKEN}
+    # This command creates the config.json using the ENV vars before starting
+    command: >
+      sh -c "echo '{\"port\": \"$PORT\", \"token\": \"$AUTH_TOKEN\"}' > config.json && 
+             npm start"
+    ports:
+      - "3000:3000"
+
