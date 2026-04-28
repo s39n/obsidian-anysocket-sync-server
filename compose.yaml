@@ -7,12 +7,12 @@ services:
       - /volume1/Docker/anysync/sync_data:/app/data
       - /volume1/Docker/anysync/config.json:/app/config.json
     environment:
-      - PORT=${PORT}
+      - PORT=3000
       - AUTH_TOKEN=${AUTH_TOKEN}
     # This command creates the config.json using the ENV vars before starting
     command: >
       sh -c "echo '{\"port\": \"$PORT\", \"token\": \"$AUTH_TOKEN\"}' > config.json && 
              npm start"
     ports:
-      - "3000:3000"
+      - "3777:3000"
 
