@@ -4,7 +4,7 @@
       working_dir: /app
       volumes:
         - /volume1/Docker/anysync/sync_data:/app/data
-        - /volume1/Docker/anysocket/config.js:/app/config.js
+        - /volume1/Docker/anysync/config.js:/app/config.js
       environment:
         - PORT=3000
       ports:
