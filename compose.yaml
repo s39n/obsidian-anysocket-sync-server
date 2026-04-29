@@ -1,8 +1,13 @@
-  services:
-    sync-server:
-      build: https://github.com/s39n/obsidian-anysocket-sync-server.git
-      volumes:
-        - /volume1/Docker/anysync/sync_data:/app/data
-        - /volume1/Docker/anysync/config.js:/app/config.js
-      ports:
-        - "3777:3000"
+services:
+  sync-server:
+    build: .             # <--- (tells Docker to use your Dockerfile)
+    working_dir: /app
+    volumes:
+      - /share/Docker/anysocket/config.js:/app/config.js  # <--- (!Chanage to your own setup!)
+      - /share/Docker/anysocket/data:/app/data # <--- (!Chanage to your own setup!)
+    environment:
+      - PORT=3000
+      - AUTH_TOKEN=${AUTH_TOKEN} # <--- (!Chanage to your own setup!)
+    command: npm start
+    ports:
+      - "3777:3000" # <--- (!Chanage 3777 to your own setup!)
