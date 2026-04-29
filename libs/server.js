@@ -15,8 +15,6 @@ module.exports = class Server {
         this.getPeerList = () => peerList;
         this.setPeerList = (list) => { peerList = list; };
 
-        this.BUILD_INFO = JSON.parse(fs.readFileSync(this.config.app_dir + "/client/build_info.json", "utf-8"));
-
         this.server = new AnySocket();
         this.server.onAuth = (packet) => {
             return packet.auth == Helpers.getSHA(packet.id.substring(0, 16) + this.config.password + packet.id.substring(16));
@@ -101,7 +99,7 @@ module.exports = class Server {
     }
 
     onVersionCheck(version, build, peer) {
-        const BUILD_INFO = this.BUILD_INFO;
+        const BUILD_INFO = JSON.parse(fs.readFileSync(this.config.app_dir + "/client/build_info.json", "utf-8"));
         if (version == BUILD_INFO.version && build == BUILD_INFO.build) {
             return {
                 type: "ok"
