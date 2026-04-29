@@ -1,7 +1,6 @@
-FROM node:22-alpine
+FROM node:19-alpine
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
 COPY . .
+RUN npm install
 CMD ["node", "index.js"]
 EXPOSE 3000
