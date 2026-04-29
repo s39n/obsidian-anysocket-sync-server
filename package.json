@@ -4,6 +4,7 @@
 	"description": "Self-Hosted synchronization server for Obsidian AnySocket Sync",
 	"main": "index.js",
 	"scripts": {
+		"start": "node index.js",
 		"test": "node test.js"
 	},
 	"author": "Andrei Vaduva <andrei.vaduva@gmail.com>",
