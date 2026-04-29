@@ -100,7 +100,7 @@ module.exports = class Server {
 
     onVersionCheck(version, build, peer) {
         const BUILD_INFO = JSON.parse(fs.readFileSync(this.config.app_dir + "/client/build_info.json", "utf-8"));
-        if (version == BUILD_INFO.version && build == BUILD_INFO.build) {
+        if (version == BUILD_INFO.version) {
             return {
                 type: "ok"
             };
