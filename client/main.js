@@ -4293,7 +4293,7 @@ __export(main_exports, {
   default: () => AnySocketSyncPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/libs/AnysocketManager.ts
 var import_obsidian2 = require("obsidian");
@@ -4588,9 +4588,12 @@ var Utils_default = new class Utils {
     return Array.prototype.map.call(new Uint8Array(sha), (x) => ("00" + x.toString(16)).slice(-2)).join("");
   }
   isBinary(path) {
-    path = path.split(".");
-    let extension = path[path.length - 1];
+    const parts = path.split(".");
+    const extension = parts[parts.length - 1];
     return this.binaryExtensions.indexOf(extension) !== -1;
+  }
+  isBinaryExt(ext) {
+    return this.binaryExtensions.indexOf(ext) !== -1;
   }
 }();
 
@@ -4938,10 +4941,36 @@ var FSAdapter = class {
   async forceDelete(path) {
     return await app.vault.adapter.remove((0, import_obsidian3.normalizePath)(this.basePath + path));
   }
-  async iterate(callback) {
-    let files = app.vault.getAllLoadedFiles();
-    for (let file of files) {
-      await callback(file);
+  async iterate(callback, skipPrefix) {
+    await this._iterateDir("/", callback, skipPrefix);
+  }
+  async _iterateDir(dir, callback, skipPrefix) {
+    let listing;
+    try {
+      listing = await app.vault.adapter.list((0, import_obsidian3.normalizePath)(dir));
+    } catch (e) {
+      return;
+    }
+    for (const folderPath of listing.folders || []) {
+      if (skipPrefix && (folderPath === skipPrefix || folderPath.startsWith(skipPrefix + "/")))
+        continue;
+      try {
+        const stat = await app.vault.adapter.stat((0, import_obsidian3.normalizePath)(folderPath));
+        await callback({ path: folderPath, stat });
+        await this._iterateDir(folderPath, callback, skipPrefix);
+      } catch (e) {
+      }
+    }
+    for (const filePath of listing.files || []) {
+      if (skipPrefix && filePath.startsWith(skipPrefix + "/"))
+        continue;
+      try {
+        const stat = await app.vault.adapter.stat((0, import_obsidian3.normalizePath)(filePath));
+        if (stat) {
+          await callback({ path: filePath, stat });
+        }
+      } catch (e) {
+      }
     }
   }
   getFile(path) {
@@ -5064,13 +5093,20 @@ var Storage = class {
   async computeTree() {
     const seenPaths = /* @__PURE__ */ new Set();
     const offset = await this.getTime() - Date.now();
+    const pluginDir = this.fsInternal.basePath.replace(/\/$/, "");
+    let count = 0;
     await this.fsVault.iterate(async (item) => {
+      var _a;
       if (item.path == "/")
         return;
       seenPaths.add(item.path);
+      if (++count % 100 === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
       const stat = item.stat;
       const stored = this.tree[item.path];
-      let meta = { type: stat ? "file" : "folder" };
+      const itemType = (_a = stat == null ? void 0 : stat.type) != null ? _a : stat ? "file" : "folder";
+      let meta = { type: itemType };
       if (meta.type === "folder") {
         const mtime = await this.getFolderMTime(item, offset);
         if (mtime === false)
@@ -5094,7 +5130,7 @@ var Storage = class {
       meta.action = "created";
       this.tree[item.path] = meta;
       this.scheduleThrottledWrite();
-    });
+    }, pluginDir);
     for (const path in this.tree) {
       if (!seenPaths.has(path)) {
         delete this.tree[path];
@@ -5186,22 +5222,203 @@ var ALWAYS_EXCLUDED = [
   /^\.obsidian\/workspace-mobile\.json$/,
   /^\.obsidian\/cache$/
 ];
+var IMAGE_EXTS = /* @__PURE__ */ new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "bmp",
+  "svg",
+  "webp",
+  "tif",
+  "tiff",
+  "ico",
+  "avif",
+  "heic",
+  "heif",
+  "raw",
+  "cr2",
+  "nef",
+  "dng",
+  "psd",
+  "eps",
+  "icns",
+  "cur",
+  "wbmp",
+  "pbm",
+  "pgm",
+  "ppm",
+  "pnm",
+  "xbm",
+  "xpm",
+  "pcx",
+  "tga",
+  "ras",
+  "rgb",
+  "sgi",
+  "djvu",
+  "dcm",
+  "wdp",
+  "fbs",
+  "fh",
+  "fpx",
+  "ktx",
+  "mdi",
+  "mng",
+  "ief",
+  "g3",
+  "cgm",
+  "cmx",
+  "btif",
+  "jxr",
+  "xif",
+  "xwd",
+  "3dm",
+  "3ds"
+]);
+var AUDIO_EXTS = /* @__PURE__ */ new Set([
+  "mp3",
+  "wav",
+  "ogg",
+  "flac",
+  "aac",
+  "m4a",
+  "opus",
+  "wma",
+  "aif",
+  "aiff",
+  "au",
+  "mid",
+  "midi",
+  "mka",
+  "oga",
+  "weba",
+  "caf",
+  "adp",
+  "dts",
+  "dtshd",
+  "s3m",
+  "xm",
+  "mp4a",
+  "mpga",
+  "wax",
+  "dra",
+  "ecelp4800",
+  "ecelp7470",
+  "ecelp9600",
+  "sil",
+  "pya",
+  "rip",
+  "lvp",
+  "eol"
+]);
+var VIDEO_EXTS = /* @__PURE__ */ new Set([
+  "mp4",
+  "webm",
+  "ogv",
+  "mov",
+  "mkv",
+  "avi",
+  "wmv",
+  "flv",
+  "m4v",
+  "3gp",
+  "3g2",
+  "asf",
+  "f4v",
+  "mpeg",
+  "mpg",
+  "qt",
+  "rmvb",
+  "vob",
+  "swf",
+  "fli",
+  "fvt",
+  "h261",
+  "h263",
+  "h264",
+  "jpgv",
+  "jpm",
+  "mj2",
+  "mxu",
+  "smv",
+  "uvh",
+  "uvi",
+  "uvm",
+  "uvp",
+  "uvs",
+  "uvu",
+  "viv",
+  "wm",
+  "wmx",
+  "wvx",
+  "dvb",
+  "movie",
+  "mar"
+]);
+var CORE_PLUGIN_SETTINGS_KNOWN = /* @__PURE__ */ new Set([
+  ".obsidian/app.json",
+  ".obsidian/appearance.json",
+  ".obsidian/hotkeys.json",
+  ".obsidian/core-plugins.json",
+  ".obsidian/core-plugins-migration.json",
+  ".obsidian/community-plugins.json"
+]);
 var ExclusionFilter = class {
   constructor(settings) {
     this.patterns = [];
-    this.excludeHidden = !settings.syncHiddenFiles;
-    this.excludeSnippets = !settings.syncSnippets;
-    this.patterns = settings.exclusionList.split("\n").map((p) => p.trim()).filter((p) => p.length > 0 && !p.startsWith("#")).map((p) => this.patternToRegex(p));
+    this.settings = settings;
+    this.patterns = (settings.exclusionList || "").split("\n").map((p) => p.trim()).filter((p) => p.length > 0 && !p.startsWith("#")).map((p) => this.patternToRegex(p));
   }
   isExcluded(path) {
     if (ALWAYS_EXCLUDED.some((re) => re.test(path)))
       return true;
-    if (this.isSnippetsPath(path)) {
-      return this.excludeSnippets;
-    }
-    if (this.excludeHidden && this.isHiddenPath(path))
+    if (this.isThemesPath(path))
+      return !this.settings.syncThemesAndSnippets;
+    if (this.isSnippetsPath(path))
+      return !this.settings.syncSnippets || !this.settings.syncThemesAndSnippets;
+    if (!this.settings.syncHiddenFiles && this.isHiddenPath(path))
       return true;
+    if (path.startsWith(".obsidian/")) {
+      if (this.isMainSettings(path) && !this.settings.syncMainSettings)
+        return true;
+      if (this.isAppearanceSettings(path) && !this.settings.syncAppearanceSettings)
+        return true;
+      if (this.isHotkeySettings(path) && !this.settings.syncHotkeys)
+        return true;
+      if (this.isActiveCorePlugins(path) && !this.settings.syncActiveCorePlugins)
+        return true;
+      if (this.isCorePluginSettings(path) && !this.settings.syncCorePluginSettings)
+        return true;
+      if (this.isActiveCommunityPlugins(path) && !this.settings.syncActiveCommunityPlugins)
+        return true;
+      if (this.isInstalledCommunityPlugins(path) && !this.settings.syncInstalledCommunityPlugins)
+        return true;
+    } else {
+      const ext = this.getExtension(path);
+      if (ext) {
+        if (!this.settings.syncImages && IMAGE_EXTS.has(ext))
+          return true;
+        if (!this.settings.syncAudio && AUDIO_EXTS.has(ext))
+          return true;
+        if (!this.settings.syncVideos && VIDEO_EXTS.has(ext))
+          return true;
+        if (!this.settings.syncPDFs && ext === "pdf")
+          return true;
+        if (!this.settings.syncOtherTypes && this.isOtherBinary(ext))
+          return true;
+      }
+    }
     return this.patterns.some((re) => re.test(path));
+  }
+  getExtension(path) {
+    const parts = path.split(".");
+    return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+  }
+  isOtherBinary(ext) {
+    if (!ext || IMAGE_EXTS.has(ext) || AUDIO_EXTS.has(ext) || VIDEO_EXTS.has(ext) || ext === "pdf")
+      return false;
+    return Utils_default.isBinaryExt(ext);
   }
   isHiddenPath(path) {
     return path.split("/").some((segment) => segment.startsWith("."));
@@ -5209,14 +5426,44 @@ var ExclusionFilter = class {
   isSnippetsPath(path) {
     return path === ".obsidian/snippets" || path.startsWith(".obsidian/snippets/");
   }
+  isThemesPath(path) {
+    return path === ".obsidian/themes" || path.startsWith(".obsidian/themes/");
+  }
+  isMainSettings(path) {
+    return path === ".obsidian/app.json";
+  }
+  isAppearanceSettings(path) {
+    return path === ".obsidian/appearance.json";
+  }
+  isHotkeySettings(path) {
+    return path === ".obsidian/hotkeys.json";
+  }
+  isActiveCorePlugins(path) {
+    return path === ".obsidian/core-plugins.json" || path === ".obsidian/core-plugins-migration.json";
+  }
+  isCorePluginSettings(path) {
+    if (!path.startsWith(".obsidian/"))
+      return false;
+    if (path.startsWith(".obsidian/plugins/") || path.startsWith(".obsidian/themes/") || path.startsWith(".obsidian/snippets/"))
+      return false;
+    if (CORE_PLUGIN_SETTINGS_KNOWN.has(path))
+      return false;
+    const parts = path.split("/");
+    return parts.length === 2 && path.endsWith(".json");
+  }
+  isActiveCommunityPlugins(path) {
+    return path === ".obsidian/community-plugins.json";
+  }
+  isInstalledCommunityPlugins(path) {
+    return path === ".obsidian/plugins" || path.startsWith(".obsidian/plugins/");
+  }
   patternToRegex(pattern) {
     const anchored = pattern.startsWith("/");
     if (anchored)
       pattern = pattern.slice(1);
     const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\0").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]").replace(/\x00/g, ".*");
-    if (anchored) {
+    if (anchored)
       return new RegExp(`^${escaped}(/.*)?$`);
-    }
     return new RegExp(`(^|/)${escaped}(/.*)?$`);
   }
 };
@@ -5233,6 +5480,8 @@ var XSync = class {
     this.isSyncing = false;
     this.debug = false;
     this.unsentSessionEvents = {};
+    this.activityLog = [];
+    this.MAX_ACTIVITY = 200;
     this.plugin = plugin;
     this.anysocket = new AnysocketManager(this);
     this.storage = new Storage(plugin);
@@ -5481,6 +5730,7 @@ var XSync = class {
       }).catch((e) => {
         console.error("Failed to send file event:", file.path, e);
       });
+      this.addActivity(action === "delete" ? "delete" : "up", file.path);
     } catch (e) {
       console.error("Error in _processLocalEvent:", e);
     }
@@ -5604,9 +5854,11 @@ var XSync = class {
               await this.storage.write(data.path, data.data, data.metadata);
             }
           }
+          this.addActivity("down", data.path);
           break;
         case "deleted":
           await this.storage.delete(data.path, data.metadata);
+          this.addActivity("delete", data.path);
           break;
       }
     }
@@ -5659,6 +5911,11 @@ var XSync = class {
       metadata
     };
   }
+  addActivity(direction, path) {
+    this.activityLog.unshift({ timestamp: Date.now(), path, direction });
+    if (this.activityLog.length > this.MAX_ACTIVITY)
+      this.activityLog.pop();
+  }
   makeStatusBarItem(statusbar) {
     this.xNotify.makeStatusBarItem(statusbar);
   }
@@ -5668,7 +5925,7 @@ var XSync = class {
 var import_obsidian5 = require("obsidian");
 var VersionHistoryModal = class extends import_obsidian5.Modal {
   constructor(plugin, path) {
-    super(app);
+    super(plugin.app);
     this.plugin = plugin;
     this.path = path;
     this.name = "Unknown";
@@ -5808,12 +6065,15 @@ var import_os = require("os");
 var import_obsidian6 = require("obsidian");
 var import_AnySocket2 = __toESM(require_AnySocket());
 var FilesHistoryModal = class extends import_obsidian6.SuggestModal {
-  constructor(plugin, deletedOnly = false) {
-    super(app);
+  constructor(plugin, deletedOnly = false, pathFilter) {
+    super(plugin.app);
     this.plugin = plugin;
     this.data = [];
     this.deletedOnly = deletedOnly;
-    if (this.deletedOnly) {
+    this.pathFilter = pathFilter;
+    if (pathFilter) {
+      this.setPlaceholder("Search settings files...");
+    } else if (this.deletedOnly) {
       this.setPlaceholder("Search for deleted files...");
     } else {
       this.setPlaceholder("Search for files...");
@@ -5825,7 +6085,8 @@ var FilesHistoryModal = class extends import_obsidian6.SuggestModal {
     this.containerEl.addClass("anysocket-files-history");
   }
   getSuggestions(query) {
-    return this.data.filter((item) => item.path.toLowerCase().includes(query.toLowerCase()));
+    let items = this.pathFilter ? this.data.filter((item) => this.pathFilter(item.path)) : this.data;
+    return items.filter((item) => item.path.toLowerCase().includes(query.toLowerCase()));
   }
   async onChooseSuggestion(item, evt) {
     if (Utils_default.isBinary(item.path)) {
@@ -5869,11 +6130,69 @@ var FilesHistoryModal = class extends import_obsidian6.SuggestModal {
   }
 };
 
+// src/libs/modals/ActivityLogModal.ts
+var import_obsidian7 = require("obsidian");
+var ActivityLogModal = class extends import_obsidian7.Modal {
+  constructor(plugin) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.open();
+    this.render();
+  }
+  render() {
+    this.modalEl.addClass("anysocket-activity-log");
+    this.titleEl.setText("Activity Log");
+    const log = this.plugin.xSync.activityLog;
+    if (log.length === 0) {
+      this.contentEl.createDiv({
+        text: "No sync activity yet.",
+        cls: "activity-empty"
+      }).style.opacity = "0.5";
+      return;
+    }
+    const list = this.contentEl.createDiv("activity-list");
+    for (const entry of log) {
+      const row = list.createDiv("activity-row");
+      const icon = row.createSpan("activity-icon");
+      if (entry.direction === "up") {
+        icon.setText("\u2191");
+        icon.addClass("activity-up");
+        icon.title = "Uploaded";
+      } else if (entry.direction === "down") {
+        icon.setText("\u2193");
+        icon.addClass("activity-down");
+        icon.title = "Downloaded";
+      } else {
+        icon.setText("\u2715");
+        icon.addClass("activity-delete");
+        icon.title = "Deleted";
+      }
+      const info = row.createDiv("activity-info");
+      const parts = entry.path.split("/");
+      info.createDiv({ text: parts[parts.length - 1], cls: "activity-filename" });
+      info.createDiv({ text: entry.path, cls: "activity-path" });
+      row.createDiv({ text: this.relativeTime(entry.timestamp), cls: "activity-time" });
+    }
+  }
+  relativeTime(timestamp) {
+    const diff = Math.floor((Date.now() - timestamp) / 1e3);
+    if (diff < 10)
+      return "just now";
+    if (diff < 60)
+      return `${diff}s ago`;
+    if (diff < 3600)
+      return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400)
+      return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+};
+
 // src/main.ts
 var import_ua_parser_js = __toESM(require_ua_parser());
 var deviceInfo = new import_ua_parser_js.UAParser(navigator.userAgent).getDevice();
 function getDefaultDeviceName() {
-  return import_obsidian7.Platform.isDesktop ? (0, import_os.hostname)() : deviceInfo.model || "Unknown";
+  return import_obsidian8.Platform.isDesktop ? (0, import_os.hostname)() : deviceInfo.model || "Unknown";
 }
 var DEFAULT_SETTINGS = {
   host: "127.0.0.1",
@@ -5887,13 +6206,26 @@ var DEFAULT_SETTINGS = {
   debug: false,
   syncHiddenFiles: true,
   syncSnippets: true,
-  exclusionList: "# macOS\n.DS_Store\n\n# Windows\nThumbs.db\ndesktop.ini"
+  exclusionList: "# macOS\n.DS_Store\n\n# Windows\nThumbs.db\ndesktop.ini",
+  syncImages: true,
+  syncAudio: true,
+  syncVideos: true,
+  syncPDFs: true,
+  syncOtherTypes: true,
+  syncMainSettings: true,
+  syncAppearanceSettings: true,
+  syncThemesAndSnippets: true,
+  syncHotkeys: true,
+  syncActiveCorePlugins: true,
+  syncCorePluginSettings: true,
+  syncActiveCommunityPlugins: true,
+  syncInstalledCommunityPlugins: true
 };
-var AnySocketSyncPlugin = class extends import_obsidian7.Plugin {
+var AnySocketSyncPlugin = class extends import_obsidian8.Plugin {
   constructor() {
     super(...arguments);
-    this.VERSION = "1.5.0";
-    this.BUILD = "1777410189309";
+    this.VERSION = "1.5.4";
+    this.BUILD = "1777498312048";
     this.isReady = false;
   }
   async onload() {
@@ -5936,6 +6268,13 @@ var AnySocketSyncPlugin = class extends import_obsidian7.Plugin {
         new FilesHistoryModal(this, true);
       }
     });
+    this.addCommand({
+      id: "activity-log",
+      name: "Activity log",
+      callback: async () => {
+        new ActivityLogModal(this);
+      }
+    });
     this.addSettingTab(new AnySocketSyncSettingTab(this));
     this.xSync = new XSync(this);
     this.xSync.makeStatusBarItem(this.addStatusBarItem());
@@ -5965,45 +6304,49 @@ var AnySocketSyncPlugin = class extends import_obsidian7.Plugin {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-send"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"></path><path d="m21.854 2.147-10.94 10.939"></path></svg>';
   }
 };
-var AnySocketSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
+var AnySocketSyncSettingTab = class extends import_obsidian8.PluginSettingTab {
   constructor(plugin) {
-    super(app, plugin);
+    super(plugin.app, plugin);
     this.plugin = plugin;
   }
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian7.Setting(containerEl).setName("Connection settings").setHeading();
-    new import_obsidian7.Setting(containerEl).setName("Device name").addText((text) => text.setPlaceholder(getDefaultDeviceName()).setValue(this.plugin.settings.deviceName).onChange(async (value) => {
+    new import_obsidian8.Setting(containerEl).setName("Connection settings").setHeading();
+    new import_obsidian8.Setting(containerEl).setName("Device name").addText((text) => text.setPlaceholder(getDefaultDeviceName()).setValue(this.plugin.settings.deviceName).onChange(async (value) => {
       if (value == "") {
         value = getDefaultDeviceName();
       }
       this.plugin.settings.deviceName = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(containerEl).setName("Host").addText((text) => text.setPlaceholder("127.0.0.1").setValue(this.plugin.settings.host).onChange(async (value) => {
+    new import_obsidian8.Setting(containerEl).setName("Host").addText((text) => text.setPlaceholder("127.0.0.1").setValue(this.plugin.settings.host).onChange(async (value) => {
       this.plugin.settings.host = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(containerEl).setName("Port").addText((text) => text.setPlaceholder("3000").setValue(this.plugin.settings.port).onChange(async (value) => {
+    new import_obsidian8.Setting(containerEl).setName("Port").addText((text) => text.setPlaceholder("3000").setValue(this.plugin.settings.port).onChange(async (value) => {
       this.plugin.settings.port = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(containerEl).setName("Password").addText((text) => {
+    new import_obsidian8.Setting(containerEl).setName("Password").addText((text) => {
       text.setPlaceholder("pass").setValue(this.plugin.settings.password).onChange(async (value) => {
         this.plugin.settings.password = value;
         await this.plugin.saveSettings();
       });
       text.inputEl.type = "password";
     });
-    new import_obsidian7.Setting(containerEl).setName("Enable Connection").addToggle((toggle) => {
+    new import_obsidian8.Setting(containerEl).setName("Enable Connection").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.syncEnabled).onChange(async (value) => {
         this.plugin.settings.syncEnabled = value;
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian7.Setting(containerEl).setName("Sync settings").setHeading();
-    new import_obsidian7.Setting(containerEl).setName("Delayed Sync").setDesc("Delay sync until no changes for the specified duration (or focus changed)").addDropdown((dropdown) => {
+    new import_obsidian8.Setting(containerEl).setName("Sync settings").setHeading();
+    new import_obsidian8.Setting(containerEl).setName("Activity log").setDesc("View recent sync activity \u2014 uploads, downloads, and deletions").addButton((button) => button.setButtonText("View log").onClick(() => {
+      new ActivityLogModal(this.plugin);
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Delayed Sync").setDesc("Delay sync until no changes for the specified duration (or focus changed)").addDropdown((dropdown) => {
+      var _a;
       dropdown.addOption("0", "Instant");
       dropdown.addOption("3", "3s");
       dropdown.addOption("4", "4s");
@@ -6017,44 +6360,102 @@ var AnySocketSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       dropdown.addOption("300", "5m");
       dropdown.addOption("600", "10m");
       dropdown.addOption("900", "15m");
-      dropdown.setValue(this.plugin.settings.delayedSync.toString()).onChange(async (value) => {
+      dropdown.setValue(((_a = this.plugin.settings.delayedSync) != null ? _a : 3).toString()).onChange(async (value) => {
         this.plugin.settings.delayedSync = parseInt(value);
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian7.Setting(containerEl).setName("Auto Sync").setDesc("Automatically sync when local/remote changes are detected").addToggle((toggle) => {
+    new import_obsidian8.Setting(containerEl).setName("Auto Sync").setDesc("Automatically sync when local/remote changes are detected").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.autoSync).onChange(async (value) => {
         this.plugin.settings.autoSync = value;
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian7.Setting(containerEl).setName("Notifications").addDropdown((dropdown) => {
+    new import_obsidian8.Setting(containerEl).setName("Notifications").addDropdown((dropdown) => {
+      var _a;
       dropdown.addOption("0", "Off");
       dropdown.addOption("1", "Connection status");
       dropdown.addOption("2", "Connection & sync status");
-      dropdown.setValue(this.plugin.settings.notifications.toString()).onChange(async (value) => {
+      dropdown.setValue(((_a = this.plugin.settings.notifications) != null ? _a : 1).toString()).onChange(async (value) => {
         this.plugin.settings.notifications = parseInt(value);
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian7.Setting(containerEl).setName("Debug").addToggle((toggle) => toggle.setValue(this.plugin.settings.debug).onChange(async (value) => {
+    new import_obsidian8.Setting(containerEl).setName("Debug").addToggle((toggle) => toggle.setValue(this.plugin.settings.debug).onChange(async (value) => {
       this.plugin.settings.debug = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(containerEl).setName("Exclusion settings").setHeading();
-    new import_obsidian7.Setting(containerEl).setName("Sync hidden files").setDesc("Include files and folders starting with a dot (e.g. .obsidian) in sync").addToggle((toggle) => {
+    new import_obsidian8.Setting(containerEl).setName("Selective sync").setHeading();
+    new import_obsidian8.Setting(containerEl).setName("Sync images").setDesc("Include image files (jpg, png, gif, svg, webp, etc.) in sync").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncImages).onChange(async (value) => {
+      this.plugin.settings.syncImages = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Sync audio").setDesc("Include audio files (mp3, wav, flac, ogg, etc.) in sync").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncAudio).onChange(async (value) => {
+      this.plugin.settings.syncAudio = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Sync video").setDesc("Include video files (mp4, mkv, mov, avi, etc.) in sync").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncVideos).onChange(async (value) => {
+      this.plugin.settings.syncVideos = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Sync PDFs").setDesc("Include PDF files in sync").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncPDFs).onChange(async (value) => {
+      this.plugin.settings.syncPDFs = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Sync all other types").setDesc("Include other binary file types (zip, docx, xlsx, epub, etc.) in sync").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncOtherTypes).onChange(async (value) => {
+      this.plugin.settings.syncOtherTypes = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Vault settings sync").setHeading();
+    new import_obsidian8.Setting(containerEl).setName("Settings version history").setDesc("Browse and restore previous versions of your vault settings files").addButton((button) => button.setButtonText("View history").onClick(() => {
+      new FilesHistoryModal(this.plugin, false, (path) => path.startsWith(".obsidian/"));
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Main settings").setDesc("Sync app.json \u2014 appearance, editor, and core behaviour settings").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncMainSettings).onChange(async (value) => {
+      this.plugin.settings.syncMainSettings = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Appearance settings").setDesc("Sync appearance.json \u2014 base theme, accent colour").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncAppearanceSettings).onChange(async (value) => {
+      this.plugin.settings.syncAppearanceSettings = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Themes and snippets").setDesc("Sync the themes and CSS snippets folders inside .obsidian").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncThemesAndSnippets).onChange(async (value) => {
+      this.plugin.settings.syncThemesAndSnippets = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Hotkeys").setDesc("Sync hotkeys.json \u2014 custom keyboard shortcuts").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncHotkeys).onChange(async (value) => {
+      this.plugin.settings.syncHotkeys = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Active core plugins").setDesc("Sync core-plugins.json \u2014 which built-in plugins are enabled").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncActiveCorePlugins).onChange(async (value) => {
+      this.plugin.settings.syncActiveCorePlugins = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Core plugin settings").setDesc("Sync per-plugin config files in .obsidian (daily-notes.json, templates.json, etc.)").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncCorePluginSettings).onChange(async (value) => {
+      this.plugin.settings.syncCorePluginSettings = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Active community plugins list").setDesc("Sync community-plugins.json \u2014 which community plugins are enabled").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncActiveCommunityPlugins).onChange(async (value) => {
+      this.plugin.settings.syncActiveCommunityPlugins = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Installed community plugins").setDesc("Sync the .obsidian/plugins folder \u2014 full plugin code and data").addToggle((toggle) => toggle.setValue(this.plugin.settings.syncInstalledCommunityPlugins).onChange(async (value) => {
+      this.plugin.settings.syncInstalledCommunityPlugins = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian8.Setting(containerEl).setName("Exclusion settings").setHeading();
+    new import_obsidian8.Setting(containerEl).setName("Sync hidden files").setDesc("Include files and folders starting with a dot (e.g. .obsidian) in sync").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.syncHiddenFiles).onChange(async (value) => {
         this.plugin.settings.syncHiddenFiles = value;
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian7.Setting(containerEl).setName("Sync snippets folder").setDesc("Include .obsidian/snippets in sync (overrides the hidden files toggle for snippets)").addToggle((toggle) => {
+    new import_obsidian8.Setting(containerEl).setName("Sync snippets folder").setDesc("Include .obsidian/snippets in sync (overrides the hidden files toggle for snippets)").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.syncSnippets).onChange(async (value) => {
         this.plugin.settings.syncSnippets = value;
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian7.Setting(containerEl).setName("Exclusion list").setDesc("Paths, folders, or glob patterns to exclude from sync. One per line. Lines starting with # are comments. Supports * and ** wildcards. Prefix with / to anchor to vault root. Note: .obsidian/workspace, .obsidian/workspace-mobile.json, and .obsidian/cache are always excluded.").addTextArea((text) => {
+    new import_obsidian8.Setting(containerEl).setName("Exclusion list").setDesc("Paths, folders, or glob patterns to exclude from sync. One per line. Lines starting with # are comments. Supports * and ** wildcards. Prefix with / to anchor to vault root. Note: .obsidian/workspace, .obsidian/workspace-mobile.json, and .obsidian/cache are always excluded.").addTextArea((text) => {
       text.setPlaceholder("temp/\n*.tmp\n/backup.md\n# This is a comment").setValue(this.plugin.settings.exclusionList).onChange(async (value) => {
         this.plugin.settings.exclusionList = value;
         await this.plugin.saveSettings();
@@ -6064,7 +6465,7 @@ var AnySocketSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       text.inputEl.style.fontFamily = "monospace";
       text.inputEl.style.fontSize = "12px";
     });
-    new import_obsidian7.Setting(containerEl).setName("Rebuild index").setDesc("It will reindex all the files in the vault").addButton((button) => button.setButtonText("Rebuild").onClick(async () => {
+    new import_obsidian8.Setting(containerEl).setName("Rebuild index").setDesc("It will reindex all the files in the vault").addButton((button) => button.setButtonText("Rebuild").onClick(async () => {
       await this.plugin.xSync.storage.dropMetadata();
       this.plugin.xSync.reload();
       this.plugin.xSync.xNotify.showNotification("#ffaa00", "Rebuilding index");

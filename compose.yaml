@@ -3,8 +3,8 @@ services:
     build: .             # <--- (tells Docker to use your Dockerfile)
     working_dir: /app
     volumes:
-      - /share/Docker/anysocket/config.js:/app/config.js  # <--- (!Chanage to your own setup!)
-      - /share/Docker/anysocket/data:/app/data # <--- (!Chanage to your own setup!)
+      - ./config.js:/app/config.js
+      - ./data:/app/data
     environment:
       - PORT=3000
       - AUTH_TOKEN=${AUTH_TOKEN} # <--- (!Chanage to your own setup!)
