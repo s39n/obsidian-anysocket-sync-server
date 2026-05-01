@@ -4778,14 +4778,15 @@ var AnysocketManager = class extends import_Events.default {
     this.plugin = xSync.plugin;
     this.anysocket = new import_anysocket.default();
     if (import_obsidian2.Platform.isMobile) {
-      document.addEventListener("visibilitychange", () => {
+      this.visibilityListener = () => {
         this.isBackground = document.hidden;
         if (this.isBackground) {
           this.emit("unload");
         } else {
           this.emit("reload");
         }
-      });
+      };
+      document.addEventListener("visibilitychange", this.visibilityListener);
     }
   }
   async getTime() {
@@ -4887,6 +4888,13 @@ var AnysocketManager = class extends import_Events.default {
   }
   stop() {
     this.anysocket.stop();
+  }
+  destroy() {
+    this.stop();
+    this.removeAllListeners();
+    if (this.visibilityListener) {
+      document.removeEventListener("visibilitychange", this.visibilityListener);
+    }
   }
 };
 
@@ -5482,6 +5490,7 @@ var XSync = class {
     this.unsentSessionEvents = {};
     this.activityLog = [];
     this.MAX_ACTIVITY = 200;
+    this.wakeLock = null;
     this.plugin = plugin;
     this.anysocket = new AnysocketManager(this);
     this.storage = new Storage(plugin);
@@ -5599,6 +5608,23 @@ var XSync = class {
       }
     }
   }
+  async acquireWakeLock() {
+    try {
+      if ("wakeLock" in navigator && this.wakeLock === null) {
+        this.wakeLock = await navigator.wakeLock.request("screen");
+        this.wakeLock.addEventListener("release", () => {
+          this.wakeLock = null;
+        });
+      }
+    } catch (e) {
+    }
+  }
+  releaseWakeLock() {
+    if (this.wakeLock !== null) {
+      this.wakeLock.release();
+      this.wakeLock = null;
+    }
+  }
   async sync() {
     var _a;
     if (!this.anysocket.isConnected)
@@ -5611,6 +5637,7 @@ var XSync = class {
     }
     this.unsentSessionEvents = {};
     this.isSyncing = true;
+    await this.acquireWakeLock();
     this.xNotify.notifyStatus(NotifyType.SYNCING);
     this.debug && console.log("sync");
     await this.storage.computeTree();
@@ -5631,6 +5658,7 @@ var XSync = class {
   }
   async onSyncCompleted(peer) {
     this.isSyncing = false;
+    this.releaseWakeLock();
     this.xNotify.notifyStatus(NotifyType.SYNC_COMPLETED);
   }
   async onFocusChanged() {
@@ -5751,6 +5779,7 @@ var XSync = class {
     if (this.inited == true)
       return;
     this.inited = true;
+    this.anysocket.removeAllListeners();
     this.anysocket.isEnabled = this.plugin.settings.syncEnabled;
     this.debug = this.plugin.settings.debug;
     this.exclusionFilter = new ExclusionFilter(this.plugin.settings);
@@ -5801,6 +5830,7 @@ var XSync = class {
   }
   unload() {
     clearTimeout(this.reloadTimeout);
+    this.releaseWakeLock();
     if (this.inited == false)
       return;
     this.inited = false;
@@ -5811,7 +5841,11 @@ var XSync = class {
     app.workspace.offref(this.eventRefs["active-leaf-change"]);
     app.workspace.offref(this.eventRefs["layout-change"]);
     this.anysocket.stop();
-    this.anysocket.removeAllListeners();
+    this.isSyncing = false;
+  }
+  destroy() {
+    this.unload();
+    this.anysocket.destroy();
   }
   reload() {
     this.debug && console.log("reloaded");
@@ -6225,7 +6259,7 @@ var AnySocketSyncPlugin = class extends import_obsidian8.Plugin {
   constructor() {
     super(...arguments);
     this.VERSION = "1.5.4";
-    this.BUILD = "1777498312048";
+    this.BUILD = "1777649258557";
     this.isReady = false;
   }
   async onload() {
@@ -6291,7 +6325,7 @@ var AnySocketSyncPlugin = class extends import_obsidian8.Plugin {
     await this.xSync.enabled(true);
   }
   async onunload() {
-    await this.xSync.enabled(false);
+    this.xSync.destroy();
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
