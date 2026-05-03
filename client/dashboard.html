@@ -1,92 +1,267 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Anysocket Sync Server Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnySocket Sync Dashboard</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .peer { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
-        .actions { margin-top: 10px; }
-        button { margin-right: 5px; padding: 5px 10px; cursor: pointer; }
-        .danger { color: white; background: #cc0000; border: none; }
-        #fileList { list-style: none; padding: 0; }
-        #fileList li { padding: 5px; border-bottom: 1px solid #eee; }
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --accent: #3b82f6;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #334155;
+        }
+
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: 100vh;
+        }
+
+        /* Sidebar Styling */
+        aside {
+            background: var(--card-bg);
+            border-right: 1px solid var(--border);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Main Content Area */
+        main {
+            padding: 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        h1, h2, h3 { margin: 0; font-weight: 600; }
+        h1 { font-size: 1.5rem; color: var(--accent); letter-spacing: -0.5px; }
+
+        /* Peers Grid */
+        #peers {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .peer { 
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1.25rem; 
+            border-radius: 12px;
+            transition: transform 0.2s;
+        }
+        .peer:hover { transform: translateY(-2px); }
+        .peer-id { font-family: monospace; color: var(--accent); font-size: 0.85rem; }
+        .peer-meta { font-size: 0.9rem; color: var(--text-dim); margin-top: 8px; }
+
+        /* Buttons */
+        .actions { margin-top: 1.25rem; display: flex; gap: 0.5rem; }
+        button { 
+            padding: 8px 14px; 
+            border-radius: 6px; 
+            border: 1px solid var(--border);
+            background: #334155;
+            color: white;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:hover { background: #475569; }
+        button.primary { background: var(--accent); border-color: var(--accent); }
+        button.danger { background: var(--danger); border-color: var(--danger); }
+        button.danger:hover { opacity: 0.8; }
+
+        /* File List & Search */
+        .file-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        input[type="text"] {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 1rem 0;
+        }
+
+        #fileList { 
+            list-style: none; 
+            padding: 0; 
+            margin: 0;
+            max-height: 300px; 
+            overflow-y: auto; 
+        }
+        #fileList li { 
+            padding: 10px; 
+            border-bottom: 1px solid var(--border); 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        /* Logs Section */
+        #logContent { 
+            background: #000; 
+            color: #adbac7;
+            padding: 15px; 
+            height: 250px; 
+            overflow-y: scroll; 
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
     </style>
 </head>
 <body>
-    <h1>AnySocket Sync Server Dashboard</h1>
-    <h2>Connected Peers</h2>
-    <div id="peers">Loading peers...</div>
-    
-    <div id="logs" style="margin-top:20px;">
-        <h3>Server Logs</h3>
-        <pre id="logContent" style="background: #f4f4f4; padding: 10px; height: 200px; overflow-y: scroll;"></pre>
-    </div>
 
-    <div style="margin-top:20px;">
-        <h3>Synced Files</h3>
-        <button onclick="deleteSelected()" class="danger">Delete Selected</button>
-        <input type="text" id="fileSearch" placeholder="Filter files..." onkeyup="filterFiles()" style="width: 100%; padding: 8px; margin-top: 5px;">
-        <ul id="fileList" style="height: 200px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;"></ul>
-    </div>
+    <aside>
+        <h1>AnySocket Sync</h1>
+        <div class="server-status">
+            <span style="color: var(--success)">●</span> Server Online
+        </div>
+        
+        <div class="nav-links">
+            </div>
+    </aside>
+
+    <main>
+        <section>
+            <h2>Connected Peers</h2>
+            <div id="peers">Loading peers...</div>
+        </section>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <section class="file-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>Synced Files</h3>
+                    <button onclick="deleteSelected()" class="danger">Delete Selected</button>
+                </div>
+                <input type="text" id="fileSearch" placeholder="Filter files..." onkeyup="filterFiles()">
+                <ul id="fileList"></ul>
+            </section>
+
+            <section>
+                <h3>System Logs</h3>
+                <pre id="logContent"></pre>
+            </section>
+        </div>
+    </main>
 
     <script>
+        let allFiles = [];
+
         async function fetchPeers() {
             const container = document.getElementById('peers');
-            const res = await fetch('/api/peers');
-            const peers = await res.json();
-            container.innerHTML = '';
-            peers.forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'peer';
-                div.innerHTML = `
-                    <strong>Device:</strong> ${p.data.id || 'Unknown'}<br>
-                    <strong>ID:</strong> ${p.id}<br>
-                    <strong>Last Seen:</strong> ${p.lastOnline ? new Date(p.lastOnline).toLocaleString() : 'N/A'}<br>
-                    <div class="actions">
-                        <button onclick="performAction('disconnect', '${p.id}')">Disconnect</button>
-                        <button onclick="performAction('trigger-sync', '${p.id}')">Trigger Sync</button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
+            try {
+                const res = await fetch('/api/peers');
+                const peers = await res.json();
+                container.innerHTML = '';
+                
+                if(peers.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-dim)">No peers connected.</p>';
+                    return;
+                }
+
+                peers.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'peer';
+                    div.innerHTML = `
+                        <div style="font-weight: bold; font-size: 1.1rem; margin-bottom: 4px;">${p.data.id || 'Unnamed Device'}</div>
+                        <div class="peer-id">${p.id}</div>
+                        <div class="peer-meta">
+                            <strong>Last Seen:</strong><br>
+                            ${p.lastOnline ? new Date(p.lastOnline).toLocaleString() : 'Never'}
+                        </div>
+                        <div class="actions">
+                            <button class="primary" onclick="performAction('trigger-sync', '${p.id}')">Sync Now</button>
+                            <button onclick="performAction('disconnect', '${p.id}')">Drop</button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                container.innerText = "Error loading peers.";
+            }
         }
+
         async function performAction(action, peerId) {
             await fetch(`/api/action/${action}/${peerId}`);
             fetchPeers();
         }
+
         async function loadLogs() {
             const res = await fetch('/api/logs');
-            if (res.ok) document.getElementById('logContent').innerText = await res.text();
-            else document.getElementById('logContent').innerText = "Logs not found.";
+            const el = document.getElementById('logContent');
+            if (res.ok) {
+                el.innerText = await res.text();
+                el.scrollTop = el.scrollHeight; // Auto-scroll to bottom
+            } else {
+                el.innerText = "Logs not found.";
+            }
         }
+
         async function loadFiles() {
             const res = await fetch('/api/files');
             allFiles = await res.json();
             renderFiles(allFiles);
         }
+
         function renderFiles(files) {
             const list = document.getElementById('fileList');
-            list.innerHTML = files.map(f => `<li><input type="checkbox" class="fileCheckbox" value="${encodeURIComponent(f)}"> ${f}</li>`).join('');
+            list.innerHTML = files.map(f => `
+                <li>
+                    <input type="checkbox" class="fileCheckbox" value="${encodeURIComponent(f)}"> 
+                    <span>${f}</span>
+                </li>
+            `).join('');
         }
+
         function filterFiles() {
             const query = document.getElementById('fileSearch').value.toLowerCase();
             renderFiles(allFiles.filter(f => f.toLowerCase().includes(query)));
         }
+
         async function deleteSelected() {
             const selected = Array.from(document.querySelectorAll('.fileCheckbox:checked')).map(cb => cb.value);
             if(selected.length === 0) return alert("Select at least one file");
-            if(!confirm("Are you sure you want to delete " + selected.length + " files?")) return;
+            if(!confirm(`Delete ${selected.length} files permanently?`)) return;
             
             for(const path of selected) {
                 await fetch(`/api/delete-file/${path}`);
             }
-            alert("Delete operations complete");
             loadFiles();
         }
+
+        // Init
         fetchPeers();
         loadLogs();
         loadFiles();
         setInterval(fetchPeers, 5000);
+        setInterval(loadLogs, 10000); // Update logs every 10s
     </script>
 </body>
 </html>
