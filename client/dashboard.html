@@ -1,213 +1,97 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnySocket Sync Dashboard</title>
+    <title>Anysocket Sync Server Dashboard</title>
     <style>
-        :root {
-            --bg: #0f172a;
-            --card-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-dim: #94a3b8;
-            --accent: #3b82f6;
-            --danger: #ef4444;
-            --success: #22c55e;
-            --border: #334155;
-        }
-
-        body { 
-            font-family: 'Inter', -apple-system, sans-serif; 
-            background-color: var(--bg);
-            color: var(--text-main);
-            margin: 0;
+        :root { --accent: #007bff; --text-dim: #64748b; --border: #ccc; }
+        body { font-family: sans-serif; padding: 20px; background-color: #f8fafc; }
+        .peer { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; background: white; }
+        .actions { margin-top: 10px; }
+        button { margin-right: 5px; padding: 5px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; }
+        .danger { color: white; background: #cc0000; border: none; }
+        
+        /* Grid Styles */
+        .file-grid {
             display: grid;
-            grid-template-columns: 300px 1fr;
-            height: 100vh;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            padding: 10px;
         }
-
-        /* Sidebar Styling */
-        aside {
-            background: var(--card-bg);
-            border-right: 1px solid var(--border);
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-        }
-
-        /* Main Content Area */
-        main {
-            padding: 2rem;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-        }
-
-        h1, h2, h3 { margin: 0; font-weight: 600; }
-        h1 { font-size: 1.5rem; color: var(--accent); letter-spacing: -0.5px; }
-
-        /* Peers Grid */
-        #peers {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-        }
-
-        .peer { 
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            padding: 1.25rem; 
-            border-radius: 12px;
-            transition: transform 0.2s;
-        }
-        .peer:hover { transform: translateY(-2px); }
-        .peer-id { font-family: monospace; color: var(--accent); font-size: 0.85rem; }
-        .peer-meta { font-size: 0.9rem; color: var(--text-dim); margin-top: 8px; }
-
-        /* Buttons */
-        .actions { margin-top: 1.25rem; display: flex; gap: 0.5rem; }
-        button { 
-            padding: 8px 14px; 
-            border-radius: 6px; 
-            border: 1px solid var(--border);
-            background: #334155;
-            color: white;
-            font-size: 0.85rem;
-            cursor: pointer;
+        .file-item-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            position: relative;
             transition: all 0.2s;
         }
-        button:hover { background: #475569; }
-        button.primary { background: var(--accent); border-color: var(--accent); }
-        button.danger { background: var(--danger); border-color: var(--danger); }
-        button.danger:hover { opacity: 0.8; }
-
-        /* File List & Search */
-        .file-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
+        .file-item-card:hover {
+            border-color: var(--accent);
+            background: #f1f5f9;
         }
-        input[type="text"] {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            width: 100%;
-            box-sizing: border-box;
-            margin: 1rem 0;
-        }
-
-        #fileList { 
-            list-style: none; 
-            padding: 0; 
-            margin: 0;
-            max-height: 300px; 
-            overflow-y: auto; 
-        }
-        #fileList li { 
-            padding: 10px; 
-            border-bottom: 1px solid var(--border); 
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
-        }
-
-        /* Logs Section */
-        #logContent { 
-            background: #000; 
-            color: #adbac7;
-            padding: 15px; 
-            height: 250px; 
-            overflow-y: scroll; 
-            font-family: 'Fira Code', monospace;
-            font-size: 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg); }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .file-icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+        .file-name { font-size: 0.75rem; word-break: break-all; display: block; height: 32px; overflow: hidden; }
+        .file-checkbox-overlay { position: absolute; top: 8px; left: 8px; }
+        
+        /* View Toggle Buttons */
+        .view-controls button { background: transparent; border: none; color: var(--text-dim); font-size: 1.2rem; padding: 5px; }
+        .view-controls button.active { color: var(--accent); }
     </style>
 </head>
 <body>
+    <h1>AnySocket Sync Server Dashboard</h1>
+    <h2>Connected Peers</h2>
+    <div id="peers">Loading peers...</div>
+    
+    <div id="logs" style="margin-top:20px;">
+        <h3>Server Logs</h3>
+        <pre id="logContent" style="background: #e2e8f0; padding: 10px; height: 150px; overflow-y: scroll; border-radius: 5px;"></pre>
+    </div>
 
-    <aside>
-        <h1>AnySocket Sync</h1>
-        <div class="server-status">
-            <span style="color: var(--success)">●</span> Server Online
-        </div>
-        
-        <div class="nav-links">
-            </div>
-    </aside>
-
-    <main>
-        <section>
-            <h2>Connected Peers</h2>
-            <div id="peers">Loading peers...</div>
-        </section>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-            <section class="file-card">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3>Synced Files</h3>
-                    <button onclick="deleteSelected()" class="danger">Delete Selected</button>
+    <section class="file-card" style="margin-top:20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h3>Synced Files</h3>
+                <div class="view-controls">
+                    <button id="listBtn" onclick="setView('list')">≡</button>
+                    <button id="gridBtn" onclick="setView('grid')" class="active">⊞</button>
                 </div>
-                <input type="text" id="fileSearch" placeholder="Filter files..." onkeyup="filterFiles()">
-                <ul id="fileList"></ul>
-            </section>
-
-            <section>
-                <h3>System Logs</h3>
-                <pre id="logContent"></pre>
-            </section>
+            </div>
+            <button onclick="deleteSelected()" class="danger">Delete Selected</button>
         </div>
-    </main>
+        
+        <input type="text" id="fileSearch" placeholder="Search filenames..." onkeyup="filterFiles()" style="width: 100%; padding: 8px; margin: 10px 0; box-sizing: border-box;">
+        
+        <div id="fileContainer" class="file-grid" style="height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: #fff;">
+        </div>
+    </section>
 
     <script>
         let allFiles = [];
+        let currentView = 'grid';
 
         async function fetchPeers() {
             const container = document.getElementById('peers');
-            try {
-                const res = await fetch('/api/peers');
-                const peers = await res.json();
-                container.innerHTML = '';
-                
-                if(peers.length === 0) {
-                    container.innerHTML = '<p style="color: var(--text-dim)">No peers connected.</p>';
-                    return;
-                }
-
-                peers.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = 'peer';
-                    div.innerHTML = `
-                        <div style="font-weight: bold; font-size: 1.1rem; margin-bottom: 4px;">${p.data.id || 'Unnamed Device'}</div>
-                        <div class="peer-id">${p.id}</div>
-                        <div class="peer-meta">
-                            <strong>Last Seen:</strong><br>
-                            ${p.lastOnline ? new Date(p.lastOnline).toLocaleString() : 'Never'}
-                        </div>
-                        <div class="actions">
-                            <button class="primary" onclick="performAction('trigger-sync', '${p.id}')">Sync Now</button>
-                            <button onclick="performAction('disconnect', '${p.id}')">Drop</button>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            } catch (e) {
-                container.innerText = "Error loading peers.";
-            }
+            const res = await fetch('/api/peers');
+            const peers = await res.json();
+            container.innerHTML = '';
+            peers.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'peer';
+                div.innerHTML = `
+                    <strong>Device:</strong> ${p.data.id || 'Unknown'}<br>
+                    <strong>ID:</strong> ${p.id}<br>
+                    <strong>Last Seen:</strong> ${p.lastOnline ? new Date(p.lastOnline).toLocaleString() : 'N/A'}<br>
+                    <div class="actions">
+                        <button onclick="performAction('disconnect', '${p.id}')">Disconnect</button>
+                        <button onclick="performAction('trigger-sync', '${p.id}')">Trigger Sync</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
         }
-
+        
         async function performAction(action, peerId) {
             await fetch(`/api/action/${action}/${peerId}`);
             fetchPeers();
@@ -215,13 +99,8 @@
 
         async function loadLogs() {
             const res = await fetch('/api/logs');
-            const el = document.getElementById('logContent');
-            if (res.ok) {
-                el.innerText = await res.text();
-                el.scrollTop = el.scrollHeight; // Auto-scroll to bottom
-            } else {
-                el.innerText = "Logs not found.";
-            }
+            if (res.ok) document.getElementById('logContent').innerText = await res.text();
+            else document.getElementById('logContent').innerText = "Logs not found.";
         }
 
         async function loadFiles() {
@@ -230,14 +109,59 @@
             renderFiles(allFiles);
         }
 
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                pdf: '📄',
+                jpg: '🖼️', jpeg: '🖼️', png: '🖼️',
+                mp4: '🎬', mov: '🎬',
+                zip: '📦', rar: '📦',
+                txt: '📝', doc: '📝', docx: '📝'
+            };
+            return icons[ext] || '📁';
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.getElementById('listBtn').classList.toggle('active', view === 'list');
+            document.getElementById('gridBtn').classList.toggle('active', view === 'grid');
+            document.getElementById('fileContainer').className = view === 'grid' ? 'file-grid' : '';
+            renderFiles(allFiles);
+        }
+
         function renderFiles(files) {
-            const list = document.getElementById('fileList');
-            list.innerHTML = files.map(f => `
-                <li>
-                    <input type="checkbox" class="fileCheckbox" value="${encodeURIComponent(f)}"> 
-                    <span>${f}</span>
-                </li>
-            `).join('');
+            const container = document.getElementById('fileContainer');
+            if (currentView === 'grid') {
+                container.innerHTML = files.map(f => `
+                    <div class="file-item-card">
+                        <input type="checkbox" class="fileCheckbox file-checkbox-overlay" value="${encodeURIComponent(f.path)}">
+                        <span class="file-icon">${getFileIcon(f.path)}</span>
+                        <span class="file-name">${f.path}</span>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; border-bottom: 2px solid #ccc;">
+                                <th style="padding: 10px;"></th>
+                                <th style="padding: 10px;">Name</th>
+                                <th style="padding: 10px;">Size</th>
+                                <th style="padding: 10px;">Modified</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${files.map(f => `
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 10px;"><input type="checkbox" class="fileCheckbox" value="${encodeURIComponent(f.path)}"></td>
+                                    <td style="padding: 10px;">${f.path}</td>
+                                    <td style="padding: 10px;">${(f.size / 1024).toFixed(1)} KB</td>
+                                    <td style="padding: 10px;">${new Date(f.mtime).toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+            }
         }
 
         function filterFiles() {
@@ -248,20 +172,19 @@
         async function deleteSelected() {
             const selected = Array.from(document.querySelectorAll('.fileCheckbox:checked')).map(cb => cb.value);
             if(selected.length === 0) return alert("Select at least one file");
-            if(!confirm(`Delete ${selected.length} files permanently?`)) return;
+            if(!confirm("Are you sure you want to delete " + selected.length + " files?")) return;
             
             for(const path of selected) {
                 await fetch(`/api/delete-file/${path}`);
             }
+            alert("Delete operations complete");
             loadFiles();
         }
 
-        // Init
         fetchPeers();
         loadLogs();
         loadFiles();
         setInterval(fetchPeers, 5000);
-        setInterval(loadLogs, 10000); // Update logs every 10s
     </script>
 </body>
 </html>

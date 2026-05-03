@@ -74,10 +74,15 @@ const AnySocket = require("anysocket");
             let files = [];
             fs.readdirSync(dir).forEach(file => {
                 const fullPath = path.join(dir, file);
-                if (fs.statSync(fullPath).isDirectory()) {
+                const stat = fs.statSync(fullPath);
+                if (stat.isDirectory()) {
                     files = files.concat(walk(fullPath));
                 } else {
-                    files.push(fullPath.replace(config.app_dir + "/data/files/", ""));
+                    files.push({
+                        path: fullPath.replace(config.app_dir + "/data/files/", ""),
+                        size: stat.size,
+                        mtime: stat.mtime
+                    });
                 }
             });
             return files;
