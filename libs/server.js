@@ -151,6 +151,24 @@ module.exports = class Server {
     }
 
     async onSync(data, packet) {
+        if (!packet.peer.data.syncBuffer) {
+            packet.peer.data.syncBuffer = [];
+        }
+
+        if (packet.msg.total !== undefined && packet.msg.index !== undefined) {
+            // Chunked sync
+            packet.peer.data.syncBuffer.push(...data);
+            
+            if (packet.peer.data.syncBuffer.length < packet.msg.total) {
+                this.debug >= 2 && console.log("[SERVER][" + packet.peer.data.id + "] Receiving sync chunk " + packet.msg.index + "/" + packet.msg.total);
+                return;
+            }
+            
+            this.debug >= 2 && console.log("[SERVER][" + packet.peer.data.id + "] All sync chunks received (" + packet.msg.total + ")");
+            data = packet.peer.data.syncBuffer;
+            packet.peer.data.syncBuffer = [];
+        }
+
         if(packet.peer.data.syncing) {
             this.debug >= 1 && console.log("[SERVER][" + packet.peer.data.id + "] Sync already in progress...");
             return;

@@ -32,54 +32,6 @@ var __publicField = (obj, key, value) => {
   return value;
 };
 
-// src/libs/Events.js
-var require_Events = __commonJS({
-  "src/libs/Events.js"(exports, module2) {
-    module2.exports = class EventEmitter {
-      constructor() {
-        this.callbacks = {};
-        this.callbacks_once = {};
-      }
-      on(event, cb) {
-        if (!this.callbacks[event])
-          this.callbacks[event] = [];
-        this.callbacks[event].push(cb);
-      }
-      off(event, cb) {
-        if (this.callbacks[event]) {
-          this.callbacks[event] = this.callbacks[event].filter((item) => item !== cb);
-        }
-      }
-      removeListener(event, cb) {
-        this.off(event, cb);
-      }
-      removeAllListeners(event) {
-        if (event === void 0) {
-          this.callbacks = {};
-        } else {
-          delete this.callbacks[event];
-        }
-      }
-      once(event, cb) {
-        if (!this.callbacks_once[event])
-          this.callbacks_once[event] = [];
-        this.callbacks_once[event].push(cb);
-      }
-      emit(event, ...args) {
-        let cbs = this.callbacks[event];
-        if (cbs) {
-          cbs.forEach((cb) => cb(...args));
-        }
-        cbs = this.callbacks_once[event];
-        if (cbs) {
-          cbs.forEach((cb) => cb(...args));
-          delete this.callbacks_once[event];
-        }
-      }
-    };
-  }
-});
-
 // node_modules/ms/index.js
 var require_ms = __commonJS({
   "node_modules/ms/index.js"(exports, module2) {
@@ -2967,6 +2919,54 @@ var require_AnySocket = __commonJS({
   }
 });
 
+// src/libs/Events.js
+var require_Events = __commonJS({
+  "src/libs/Events.js"(exports, module2) {
+    module2.exports = class EventEmitter {
+      constructor() {
+        this.callbacks = {};
+        this.callbacks_once = {};
+      }
+      on(event, cb) {
+        if (!this.callbacks[event])
+          this.callbacks[event] = [];
+        this.callbacks[event].push(cb);
+      }
+      off(event, cb) {
+        if (this.callbacks[event]) {
+          this.callbacks[event] = this.callbacks[event].filter((item) => item !== cb);
+        }
+      }
+      removeListener(event, cb) {
+        this.off(event, cb);
+      }
+      removeAllListeners(event) {
+        if (event === void 0) {
+          this.callbacks = {};
+        } else {
+          delete this.callbacks[event];
+        }
+      }
+      once(event, cb) {
+        if (!this.callbacks_once[event])
+          this.callbacks_once[event] = [];
+        this.callbacks_once[event].push(cb);
+      }
+      emit(event, ...args) {
+        let cbs = this.callbacks[event];
+        if (cbs) {
+          cbs.forEach((cb) => cb(...args));
+        }
+        cbs = this.callbacks_once[event];
+        if (cbs) {
+          cbs.forEach((cb) => cb(...args));
+          delete this.callbacks_once[event];
+        }
+      }
+    };
+  }
+});
+
 // node_modules/anysocket/src/browser/ws.js
 var require_ws = __commonJS({
   "node_modules/anysocket/src/browser/ws.js"(exports, module2) {
@@ -4296,7 +4296,7 @@ module.exports = __toCommonJS(main_exports);
 var import_obsidian8 = require("obsidian");
 
 // src/libs/AnysocketManager.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/libs/Utils.ts
 var Utils_default = new class Utils {
@@ -4598,7 +4598,273 @@ var Utils_default = new class Utils {
 }();
 
 // src/libs/XNotify.ts
+var import_obsidian4 = require("obsidian");
+
+// src/libs/modals/VersionHistoryModal.ts
 var import_obsidian = require("obsidian");
+var VersionHistoryModal = class extends import_obsidian.Modal {
+  constructor(plugin, path) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.path = path;
+    this.name = "Unknown";
+    this.versions = [];
+    this.type = "created";
+    this.open();
+    this.setup();
+  }
+  setup() {
+    this.modalEl.addClass("anysocket-version-history");
+    let parts = this.path.split("/");
+    this.name = parts[parts.length - 1];
+    this.titleEl.setText("Version History");
+    this.elList = this.contentEl.createDiv("history-list");
+    this.elContainer = this.contentEl.createDiv("version-container");
+    let elContent = this.elContainer.createDiv("version-content");
+    let elTitle = elContent.createDiv("version-titlebar");
+    if (this.app.isMobile) {
+      this.backButton = elTitle.createEl("button", {
+        cls: "clickable-icon",
+        attr: { "aria-label": "Back to versions list" }
+      });
+      this.backButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
+      this.backButton.onclick = this.onBack.bind(this);
+      if (!this.isPortrait()) {
+        this.backButton.hide();
+      }
+    }
+    let fileName = elTitle.createDiv("version-filename");
+    fileName.textContent = this.name;
+    let actions = elTitle.createDiv("version-actions");
+    this.buttonRestore = actions.createEl("button", {
+      text: "Restore",
+      cls: "mod-cta"
+    });
+    this.buttonRestore.disabled = true;
+    this.buttonRestore.onclick = this.onRestore.bind(this);
+    let _originalContentEl = this.contentEl;
+    this.contentEl = elContent;
+    this.markdownView = new import_obsidian.MarkdownPreviewView(this);
+    this.contentEl = _originalContentEl;
+    if (this.app.isMobile && this.isPortrait()) {
+      this.elContainer.hide();
+    }
+    this.plugin.xSync.listVersionHistory(this.path, (data) => {
+      this.versions = [];
+      if (!data || data.data.length <= 0) {
+        this.elList.createDiv({
+          text: "No version history found",
+          cls: "version-timestamp"
+        }).style.opacity = "0.5";
+        return;
+      }
+      if (data.deleted) {
+        this.type = "deleted";
+      }
+      for (let timestamp of data.data) {
+        let item = this.elList.createDiv("version-timestamp");
+        let versionItem = {
+          timestamp,
+          el: item
+        };
+        item.textContent = this.formatTimestamp(timestamp);
+        item.onclick = () => {
+          this.internalItemSelect(versionItem);
+        };
+        this.versions.push(versionItem);
+      }
+      if (this.versions.length > 0 && (!this.app.isMobile || !this.isPortrait())) {
+        this.internalItemSelect(this.versions[0]);
+      }
+    });
+  }
+  formatTimestamp(timestamp) {
+    let date = new Date(timestamp);
+    let month = date.getMonth() + 1;
+    let day = date.getDate();
+    let year = date.getFullYear();
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    let ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? "0" + minutes : minutes;
+    return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
+  }
+  internalItemSelect(item) {
+    this.versions.forEach((v) => v.el.removeClass("active"));
+    item.el.addClass("active");
+    this.plugin.xSync.readVersionHistory(this.path, item.timestamp, (data) => {
+      if (typeof data !== "string") {
+        data = "";
+      }
+      this.markdownView.set(data, true);
+      this.markdownView.applyScroll(0);
+    });
+    this.selectedVersion = item;
+    const isCurrentVersion = this.type === "created" && this.versions.length > 0 && this.selectedVersion.timestamp === this.versions[0].timestamp;
+    if (isCurrentVersion) {
+      this.buttonRestore.textContent = "Current";
+      this.buttonRestore.disabled = true;
+    } else {
+      this.buttonRestore.textContent = "Restore";
+      this.buttonRestore.disabled = false;
+    }
+    if (this.app.isMobile && this.isPortrait()) {
+      this.elContainer.show();
+      this.elList.hide();
+    }
+  }
+  isPortrait() {
+    return window.innerHeight > window.innerWidth;
+  }
+  async onBack() {
+    if (this.app.isMobile) {
+      this.elContainer.hide();
+      this.elList.show();
+    }
+  }
+  async onRestore() {
+    let data = this.markdownView.get();
+    let metadata = await this.plugin.xSync.getMetadata("restore", {
+      path: this.path,
+      data
+    });
+    metadata.sha1 = null;
+    await this.plugin.xSync.storage.write(this.path, data, metadata);
+    new import_obsidian.Notice("Restored - " + this.name + " (" + this.formatTimestamp(this.selectedVersion.timestamp) + ")");
+    this.close();
+  }
+};
+
+// src/libs/modals/FilesHistoryModal.ts
+var import_obsidian2 = require("obsidian");
+var import_AnySocket = __toESM(require_AnySocket());
+var FilesHistoryModal = class extends import_obsidian2.SuggestModal {
+  constructor(plugin, deletedOnly = false, pathFilter) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.data = [];
+    this.deletedOnly = deletedOnly;
+    this.pathFilter = pathFilter;
+    if (pathFilter) {
+      this.setPlaceholder("Search settings files...");
+    } else if (this.deletedOnly) {
+      this.setPlaceholder("Search for deleted files...");
+    } else {
+      this.setPlaceholder("Search for files...");
+    }
+    this.plugin.xSync.listFilesHistory(this.deletedOnly, (data) => {
+      this.data = data;
+      this.open();
+    });
+    this.containerEl.addClass("anysocket-files-history");
+  }
+  getSuggestions(query) {
+    let items = this.pathFilter ? this.data.filter((item) => this.pathFilter(item.path)) : this.data;
+    return items.filter((item) => item.path.toLowerCase().includes(query.toLowerCase()));
+  }
+  async onChooseSuggestion(item, evt) {
+    if (Utils_default.isBinary(item.path)) {
+      let parts = item.path.split("/");
+      await this.plugin.xSync.listVersionHistory(item.path, async (data) => {
+        await this.plugin.xSync.readVersionHistory(item.path, data.data[0], async (data2) => {
+          data2 = import_AnySocket.default.Packer.unpack(data2);
+          let metadata = await this.plugin.xSync.getMetadata("restore", {
+            path: item.path,
+            data: data2
+          });
+          metadata.sha1 = null;
+          await this.plugin.xSync.storage.writeBinary(item.path, data2, metadata);
+          new import_obsidian2.Notice("Restored - " + parts[parts.length - 1]);
+        });
+      });
+    } else {
+      new VersionHistoryModal(this.plugin, item.path);
+    }
+  }
+  renderSuggestion(value, el) {
+    el.createEl("div", { text: value.path }).addClass("item-path");
+    let prefix = "Modified: ";
+    if (this.deletedOnly) {
+      prefix = "Deleted: ";
+    }
+    el.createEl("div", { text: prefix + this.formatTimestamp(value.mtime) }).addClass("item-metadata");
+  }
+  formatTimestamp(timestamp) {
+    let date = new Date(timestamp);
+    let month = date.getMonth() + 1;
+    let day = date.getDate();
+    let year = date.getFullYear();
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    let ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? "0" + minutes : minutes;
+    return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
+  }
+};
+
+// src/libs/modals/ActivityLogModal.ts
+var import_obsidian3 = require("obsidian");
+var ActivityLogModal = class extends import_obsidian3.Modal {
+  constructor(plugin) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.open();
+    this.render();
+  }
+  render() {
+    this.modalEl.addClass("anysocket-activity-log");
+    this.titleEl.setText("Activity Log");
+    const log = this.plugin.xSync.activityLog;
+    if (log.length === 0) {
+      this.contentEl.createDiv({
+        text: "No sync activity yet.",
+        cls: "activity-empty"
+      }).style.opacity = "0.5";
+      return;
+    }
+    const list = this.contentEl.createDiv("activity-list");
+    for (const entry of log) {
+      const row = list.createDiv("activity-row");
+      const icon = row.createSpan("activity-icon");
+      if (entry.direction === "up") {
+        icon.setText("\u2191");
+        icon.addClass("activity-up");
+        icon.title = "Uploaded";
+      } else if (entry.direction === "down") {
+        icon.setText("\u2193");
+        icon.addClass("activity-down");
+        icon.title = "Downloaded";
+      } else {
+        icon.setText("\u2715");
+        icon.addClass("activity-delete");
+        icon.title = "Deleted";
+      }
+      const info = row.createDiv("activity-info");
+      const parts = entry.path.split("/");
+      info.createDiv({ text: parts[parts.length - 1], cls: "activity-filename" });
+      info.createDiv({ text: entry.path, cls: "activity-path" });
+      row.createDiv({ text: this.relativeTime(entry.timestamp), cls: "activity-time" });
+    }
+  }
+  relativeTime(timestamp) {
+    const diff = Math.floor((Date.now() - timestamp) / 1e3);
+    if (diff < 10)
+      return "just now";
+    if (diff < 60)
+      return `${diff}s ago`;
+    if (diff < 3600)
+      return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400)
+      return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+};
+
+// src/libs/XNotify.ts
 var STATUS_OK = "#339933";
 var STATUS_SYNC = "#9900ff";
 var STATUS_WARN = "#ffaa00";
@@ -4627,6 +4893,8 @@ var XNotify = class {
   }
   makeStatusBarItem(statusbar) {
     this.statusBarItem = statusbar;
+    this.statusBarItem.addClass("anysocket-status-bar");
+    this.statusBarItem.setAttr("title", "AnySocket Sync");
     let container = this.statusBarItem.createEl("span");
     container.style.verticalAlign = "middle";
     container.style.display = "inline-flex";
@@ -4636,13 +4904,75 @@ var XNotify = class {
     this.statusBarIcon.style.color = STATUS_ERROR;
     this.statusBarIcon.innerHTML = this.xSync.plugin.getSVGIcon();
     this.statusBarMessage = container.createEl("span");
-    if (import_obsidian.Platform.isMobile) {
+    this.statusBarItem.onClickEvent((evt) => {
+      this.showStatusBarMenu(evt);
+    });
+    if (import_obsidian4.Platform.isMobile) {
       this.mobileIndicator = document.querySelector(".app-container").createEl("div");
       this.mobileIndicator.addClass("anysocket-mobile-indicator");
       this.mobileIndicatorIcon = this.mobileIndicator.createEl("span");
       this.mobileIndicatorIcon.style.color = STATUS_ERROR;
       this.mobileIndicatorIcon.innerHTML = this.xSync.plugin.getSVGIcon();
+      this.mobileIndicator.addEventListener("click", (evt) => {
+        this.showStatusBarMenu(evt);
+      });
     }
+  }
+  showStatusBarMenu(evt) {
+    const menu = new import_obsidian4.Menu();
+    const isConnected = this.xSync.anysocket.isConnected;
+    const isPaused = !this.xSync.plugin.settings.syncEnabled;
+    const autoSync = this.xSync.plugin.settings.autoSync;
+    menu.addItem((item) => {
+      item.setTitle(`Status: ${this.lastNotificationType || (isConnected ? "Connected" : "Disconnected")}`).setIcon("info").setDisabled(true);
+    });
+    menu.addSeparator();
+    menu.addItem((item) => {
+      item.setTitle(isPaused ? "Resume Sync" : "Pause Sync").setIcon(isPaused ? "play" : "pause").onClick(async () => {
+        this.xSync.plugin.settings.syncEnabled = !isPaused;
+        await this.xSync.plugin.saveSettings();
+      });
+    });
+    menu.addItem((item) => {
+      item.setTitle(autoSync ? "Disable Auto-Sync" : "Enable Auto-Sync").setIcon("refresh-cw").onClick(async () => {
+        this.xSync.plugin.settings.autoSync = !autoSync;
+        await this.xSync.plugin.saveSettings();
+      });
+    });
+    if (isConnected) {
+      menu.addItem((item) => {
+        item.setTitle("Sync Now").setIcon("sync").onClick(async () => {
+          await this.xSync.sync();
+        });
+      });
+    }
+    menu.addSeparator();
+    const activeFile = app.workspace.getActiveFile();
+    if (activeFile) {
+      menu.addItem((item) => {
+        item.setTitle("File Version History").setIcon("history").onClick(() => {
+          new VersionHistoryModal(this.xSync.plugin, activeFile.path);
+        });
+      });
+    }
+    menu.addItem((item) => {
+      item.setTitle("Trash Viewer").setIcon("trash").onClick(() => {
+        new FilesHistoryModal(this.xSync.plugin, true);
+      });
+    });
+    menu.addItem((item) => {
+      item.setTitle("Activity Log").setIcon("list").onClick(() => {
+        new ActivityLogModal(this.xSync.plugin);
+      });
+    });
+    menu.addSeparator();
+    menu.addItem((item) => {
+      item.setTitle("Settings").setIcon("settings").onClick(() => {
+        app.setting.open();
+        app.setting.openTabById("anysocket-sync");
+      });
+    });
+    menu.showAtMouseEvent(evt);
   }
   setStatusMessage(message, keep = false) {
     if (!this.statusBarMessage)
@@ -4664,7 +4994,7 @@ var XNotify = class {
     this.lastNotificationType = text;
     clearTimeout(this.pendingNotificationTimeout);
     this.pendingNotificationTimeout = setTimeout(() => {
-      let notice = new import_obsidian.Notice().noticeEl;
+      let notice = new import_obsidian4.Notice().noticeEl;
       let container = notice.createEl("span");
       container.style.verticalAlign = "middle";
       container.style.display = "inline-flex";
@@ -4774,10 +5104,12 @@ var AnysocketManager = class extends import_Events.default {
     this.isUpdating = false;
     this.notifiedOfConnectError = false;
     this.peer = null;
+    this.reconnectAttempts = 0;
+    this.MAX_RECONNECT_DELAY = 3e4;
     this.xSync = xSync;
     this.plugin = xSync.plugin;
     this.anysocket = new import_anysocket.default();
-    if (import_obsidian2.Platform.isMobile) {
+    if (import_obsidian5.Platform.isMobile) {
       this.visibilityListener = () => {
         this.isBackground = document.hidden;
         if (this.isBackground) {
@@ -4899,13 +5231,13 @@ var AnysocketManager = class extends import_Events.default {
 };
 
 // src/libs/fs/FSAdapter.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 var FSAdapter = class {
   constructor(basePath) {
     this.basePath = basePath;
   }
   async makeFolder(path) {
-    await app.vault.createFolder((0, import_obsidian3.normalizePath)(this.basePath + path)).catch(() => {
+    await app.vault.createFolder((0, import_obsidian6.normalizePath)(this.basePath + path)).catch(() => {
     });
   }
   async write(path, data, mtime, binary = false) {
@@ -4923,9 +5255,9 @@ var FSAdapter = class {
         };
       }
       if (binary) {
-        await app.vault.adapter.writeBinary((0, import_obsidian3.normalizePath)(this.basePath + path), data, options);
+        await app.vault.adapter.writeBinary((0, import_obsidian6.normalizePath)(this.basePath + path), data, options);
       } else {
-        await app.vault.adapter.write((0, import_obsidian3.normalizePath)(this.basePath + path), data, options);
+        await app.vault.adapter.write((0, import_obsidian6.normalizePath)(this.basePath + path), data, options);
       }
     }
     return data;
@@ -4933,21 +5265,21 @@ var FSAdapter = class {
   async read(path, binary = false) {
     try {
       if (binary) {
-        return await app.vault.adapter.readBinary((0, import_obsidian3.normalizePath)(this.basePath + path));
+        return await app.vault.adapter.readBinary((0, import_obsidian6.normalizePath)(this.basePath + path));
       }
-      return await app.vault.adapter.read((0, import_obsidian3.normalizePath)(this.basePath + path));
+      return await app.vault.adapter.read((0, import_obsidian6.normalizePath)(this.basePath + path));
     } catch (e) {
       return null;
     }
   }
   async exists(path) {
-    return await app.vault.adapter.exists((0, import_obsidian3.normalizePath)(this.basePath + path));
+    return await app.vault.adapter.exists((0, import_obsidian6.normalizePath)(this.basePath + path));
   }
   async delete(path) {
     await app.fileManager.trashFile(this.getFile(path));
   }
   async forceDelete(path) {
-    return await app.vault.adapter.remove((0, import_obsidian3.normalizePath)(this.basePath + path));
+    return await app.vault.adapter.remove((0, import_obsidian6.normalizePath)(this.basePath + path));
   }
   async iterate(callback, skipPrefix) {
     await this._iterateDir("/", callback, skipPrefix);
@@ -4955,7 +5287,7 @@ var FSAdapter = class {
   async _iterateDir(dir, callback, skipPrefix) {
     let listing;
     try {
-      listing = await app.vault.adapter.list((0, import_obsidian3.normalizePath)(dir));
+      listing = await app.vault.adapter.list((0, import_obsidian6.normalizePath)(dir));
     } catch (e) {
       return;
     }
@@ -4963,7 +5295,7 @@ var FSAdapter = class {
       if (skipPrefix && (folderPath === skipPrefix || folderPath.startsWith(skipPrefix + "/")))
         continue;
       try {
-        const stat = await app.vault.adapter.stat((0, import_obsidian3.normalizePath)(folderPath));
+        const stat = await app.vault.adapter.stat((0, import_obsidian6.normalizePath)(folderPath));
         await callback({ path: folderPath, stat });
         await this._iterateDir(folderPath, callback, skipPrefix);
       } catch (e) {
@@ -4973,7 +5305,7 @@ var FSAdapter = class {
       if (skipPrefix && filePath.startsWith(skipPrefix + "/"))
         continue;
       try {
-        const stat = await app.vault.adapter.stat((0, import_obsidian3.normalizePath)(filePath));
+        const stat = await app.vault.adapter.stat((0, import_obsidian6.normalizePath)(filePath));
         if (stat) {
           await callback({ path: filePath, stat });
         }
@@ -4982,12 +5314,12 @@ var FSAdapter = class {
     }
   }
   getFile(path) {
-    return app.vault.getAbstractFileByPath((0, import_obsidian3.normalizePath)(path));
+    return app.vault.getAbstractFileByPath((0, import_obsidian6.normalizePath)(path));
   }
 };
 
 // src/libs/fs/Storage.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 var Storage = class {
   constructor(plugin, getTime) {
     this.tree = {};
@@ -4996,7 +5328,9 @@ var Storage = class {
     this.metadataFile = "metadata.json";
     this.throttledWriteTimeout = null;
     this.lastWriteTime = 0;
-    this.fsVault = new FSAdapter((0, import_obsidian4.normalizePath)("/"));
+    this.isWritingMetadata = false;
+    this.needsWriteMetadata = false;
+    this.fsVault = new FSAdapter((0, import_obsidian7.normalizePath)("/"));
     this.fsInternal = new FSAdapter(plugin.manifest.dir + "/");
     this.getTime = getTime || (async () => Date.now());
   }
@@ -5069,22 +5403,33 @@ var Storage = class {
     return this.tree[path];
   }
   scheduleThrottledWrite() {
-    const now = Date.now();
-    if (now - this.lastWriteTime < 500) {
-      clearTimeout(this.throttledWriteTimeout);
-      this.throttledWriteTimeout = setTimeout(() => {
-        this.writeMetadataFile();
-      }, 500 - (now - this.lastWriteTime));
-    } else {
-      this.writeMetadataFile();
+    if (this.isWritingMetadata) {
+      this.needsWriteMetadata = true;
+      return;
     }
+    const now = Date.now();
+    const elapsed = now - this.lastWriteTime;
+    const delay = Math.max(0, 500 - elapsed);
+    clearTimeout(this.throttledWriteTimeout);
+    this.throttledWriteTimeout = setTimeout(async () => {
+      await this.writeMetadataFile();
+    }, delay);
   }
   async writeMetadataFile() {
+    if (this.isWritingMetadata)
+      return;
+    this.isWritingMetadata = true;
+    this.needsWriteMetadata = false;
     try {
-      await this.fsInternal.write(this.metadataFile, JSON.stringify(this.tree, null, 2));
+      await this.fsInternal.write(this.metadataFile, JSON.stringify(this.tree));
       this.lastWriteTime = Date.now();
     } catch (e) {
       console.error("Failed to write metadata.json:", e);
+    } finally {
+      this.isWritingMetadata = false;
+      if (this.needsWriteMetadata) {
+        this.scheduleThrottledWrite();
+      }
     }
   }
   async dropMetadata() {
@@ -5103,13 +5448,16 @@ var Storage = class {
     const offset = await this.getTime() - Date.now();
     const pluginDir = this.fsInternal.basePath.replace(/\/$/, "");
     let count = 0;
+    let lastYieldTime = Date.now();
     await this.fsVault.iterate(async (item) => {
       var _a;
       if (item.path == "/")
         return;
       seenPaths.add(item.path);
-      if (++count % 100 === 0) {
+      const now = Date.now();
+      if (++count % 100 === 0 || now - lastYieldTime > 50) {
         await new Promise((resolve) => setTimeout(resolve, 0));
+        lastYieldTime = Date.now();
       }
       const stat = item.stat;
       const stored = this.tree[item.path];
@@ -5137,13 +5485,16 @@ var Storage = class {
       }
       meta.action = "created";
       this.tree[item.path] = meta;
-      this.scheduleThrottledWrite();
     }, pluginDir);
+    let treeChanged = false;
     for (const path in this.tree) {
       if (!seenPaths.has(path)) {
         delete this.tree[path];
-        this.scheduleThrottledWrite();
+        treeChanged = true;
       }
+    }
+    if (count > 0 || treeChanged) {
+      this.scheduleThrottledWrite();
     }
   }
   async updatePlugin(files) {
@@ -5186,7 +5537,7 @@ var Storage = class {
 };
 
 // src/XSync.ts
-var import_AnySocket = __toESM(require_AnySocket());
+var import_AnySocket2 = __toESM(require_AnySocket());
 
 // src/libs/XTimeouts.ts
 var XTimeouts = class {
@@ -5228,7 +5579,8 @@ var XTimeouts = class {
 var ALWAYS_EXCLUDED = [
   /^\.obsidian\/workspace(\.json)?$/,
   /^\.obsidian\/workspace-mobile\.json$/,
-  /^\.obsidian\/cache$/
+  /^\.obsidian\/cache$/,
+  /^\.obsidian\/plugins\/anysocket-sync(\/.*)?$/
 ];
 var IMAGE_EXTS = /* @__PURE__ */ new Set([
   "jpg",
@@ -5385,6 +5737,8 @@ var ExclusionFilter = class {
       return !this.settings.syncThemesAndSnippets;
     if (this.isSnippetsPath(path))
       return !this.settings.syncSnippets || !this.settings.syncThemesAndSnippets;
+    if (this.isTrashPath(path) && !this.settings.syncTrash)
+      return true;
     if (!this.settings.syncHiddenFiles && this.isHiddenPath(path))
       return true;
     if (path.startsWith(".obsidian/")) {
@@ -5430,6 +5784,9 @@ var ExclusionFilter = class {
   }
   isHiddenPath(path) {
     return path.split("/").some((segment) => segment.startsWith("."));
+  }
+  isTrashPath(path) {
+    return path === ".trash" || path.startsWith(".trash/");
   }
   isSnippetsPath(path) {
     return path === ".obsidian/snippets" || path.startsWith(".obsidian/snippets/");
@@ -5491,11 +5848,41 @@ var XSync = class {
     this.activityLog = [];
     this.MAX_ACTIVITY = 200;
     this.wakeLock = null;
+    this.messageQueue = [];
+    this.isProcessingQueue = false;
+    this.reconnectDelay = 1e3;
+    this.MAX_RECONNECT_DELAY = 3e4;
     this.plugin = plugin;
     this.anysocket = new AnysocketManager(this);
     this.storage = new Storage(plugin);
     this.xTimeouts = new XTimeouts();
     this.xNotify = new XNotify(this);
+  }
+  async processMessageQueue() {
+    if (this.isProcessingQueue)
+      return;
+    this.isProcessingQueue = true;
+    let lastYieldTime = Date.now();
+    while (this.messageQueue.length > 0) {
+      const packet = this.messageQueue.shift();
+      try {
+        switch (packet.msg.type) {
+          case "file_data":
+            await this.onFileData(packet.msg.data, packet.peer);
+            break;
+          case "sync_complete":
+            await this.onSyncCompleted(packet.peer);
+            break;
+        }
+      } catch (e) {
+        console.error("Error processing message:", e);
+      }
+      if (Date.now() - lastYieldTime > 50) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        lastYieldTime = Date.now();
+      }
+    }
+    this.isProcessingQueue = false;
   }
   async enabled(value) {
     if (this.isEnabled !== value) {
@@ -5631,30 +6018,44 @@ var XSync = class {
       return;
     if (this.isSyncing)
       return;
-    for (let key in this.unsentSessionEvents) {
-      let event = this.unsentSessionEvents[key];
-      await this._processLocalEvent(event.action, event.file, event.metadata, false);
-    }
-    this.unsentSessionEvents = {};
     this.isSyncing = true;
-    await this.acquireWakeLock();
-    this.xNotify.notifyStatus(NotifyType.SYNCING);
-    this.debug && console.log("sync");
-    await this.storage.computeTree();
-    let data = [];
-    for (const path in this.storage.tree) {
-      if ((_a = this.exclusionFilter) == null ? void 0 : _a.isExcluded(path))
-        continue;
-      const metadata = this.storage.tree[path];
-      data.push({
-        path,
-        metadata
-      });
+    try {
+      for (let key in this.unsentSessionEvents) {
+        let event = this.unsentSessionEvents[key];
+        await this._processLocalEvent(event.action, event.file, event.metadata, false);
+      }
+      this.unsentSessionEvents = {};
+      await this.acquireWakeLock();
+      this.xNotify.notifyStatus(NotifyType.SYNCING);
+      this.debug && console.log("sync");
+      await this.storage.computeTree();
+      let data = [];
+      for (const path in this.storage.tree) {
+        if ((_a = this.exclusionFilter) == null ? void 0 : _a.isExcluded(path))
+          continue;
+        const metadata = this.storage.tree[path];
+        data.push({
+          path,
+          metadata
+        });
+      }
+      const CHUNK_SIZE = 2e3;
+      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        const chunk = data.slice(i, i + CHUNK_SIZE);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        this.anysocket.send({
+          type: "sync",
+          data: chunk,
+          index: i,
+          total: data.length
+        });
+      }
+    } catch (e) {
+      console.error("Sync error:", e);
+      this.isSyncing = false;
+      this.releaseWakeLock();
+      this.xNotify.notifyStatus(this.anysocket.isConnected ? NotifyType.CONNECTED : NotifyType.NOT_CONNECTED);
     }
-    this.anysocket.send({
-      type: "sync",
-      data
-    });
   }
   async onSyncCompleted(peer) {
     this.isSyncing = false;
@@ -5794,6 +6195,7 @@ var XSync = class {
     this.eventRefs["layout-change"] = app.workspace.on("layout-change", focusChanged);
     this.anysocket.on("connected", async (peer) => {
       this.xNotify.notifyStatus(NotifyType.CONNECTED);
+      this.reconnectDelay = 1e3;
       let deviceName = this.plugin.settings.deviceName || null;
       if (deviceName != null && deviceName != "Unknown") {
         await peer.rpc.setDeviceId(deviceName);
@@ -5811,14 +6213,8 @@ var XSync = class {
       }
     });
     this.anysocket.on("message", (packet) => {
-      switch (packet.msg.type) {
-        case "file_data":
-          this.onFileData(packet.msg.data, packet.peer);
-          break;
-        case "sync_complete":
-          this.onSyncCompleted(packet.peer);
-          break;
-      }
+      this.messageQueue.push(packet);
+      this.processMessageQueue();
     });
     this.anysocket.on("reload", this.reload.bind(this));
     this.anysocket.on("unload", this.unload.bind(this));
@@ -5852,7 +6248,8 @@ var XSync = class {
     this.unload();
     this.reloadTimeout = setTimeout(() => {
       this.load();
-    }, 1e3);
+      this.reconnectDelay = Math.min(this.MAX_RECONNECT_DELAY, this.reconnectDelay * 2);
+    }, this.reconnectDelay);
   }
   async onFileData(data, peer) {
     var _a;
@@ -5869,7 +6266,7 @@ var XSync = class {
         data: {
           type: "apply",
           binary: isBinary,
-          data: isBinary ? import_AnySocket.default.Packer.pack(fileData) : fileData,
+          data: isBinary ? import_AnySocket2.default.Packer.pack(fileData) : fileData,
           path: data.path,
           metadata
         }
@@ -5883,7 +6280,7 @@ var XSync = class {
             await this.storage.makeFolder(data.path, data.metadata);
           } else {
             if (data.binary) {
-              await this.storage.writeBinary(data.path, import_AnySocket.default.Packer.unpack(data.data), data.metadata);
+              await this.storage.writeBinary(data.path, import_AnySocket2.default.Packer.unpack(data.data), data.metadata);
             } else {
               await this.storage.write(data.path, data.data, data.metadata);
             }
@@ -5955,274 +6352,8 @@ var XSync = class {
   }
 };
 
-// src/libs/modals/VersionHistoryModal.ts
-var import_obsidian5 = require("obsidian");
-var VersionHistoryModal = class extends import_obsidian5.Modal {
-  constructor(plugin, path) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.path = path;
-    this.name = "Unknown";
-    this.versions = [];
-    this.type = "created";
-    this.open();
-    this.setup();
-  }
-  setup() {
-    this.modalEl.addClass("anysocket-version-history");
-    let parts = this.path.split("/");
-    this.name = parts[parts.length - 1];
-    this.titleEl.setText("Version History");
-    this.elList = this.contentEl.createDiv("history-list");
-    this.elContainer = this.contentEl.createDiv("version-container");
-    let elContent = this.elContainer.createDiv("version-content");
-    let elTitle = elContent.createDiv("version-titlebar");
-    if (this.app.isMobile) {
-      this.backButton = elTitle.createEl("button", {
-        cls: "clickable-icon",
-        attr: { "aria-label": "Back to versions list" }
-      });
-      this.backButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
-      this.backButton.onclick = this.onBack.bind(this);
-      if (!this.isPortrait()) {
-        this.backButton.hide();
-      }
-    }
-    let fileName = elTitle.createDiv("version-filename");
-    fileName.textContent = this.name;
-    let actions = elTitle.createDiv("version-actions");
-    this.buttonRestore = actions.createEl("button", {
-      text: "Restore",
-      cls: "mod-cta"
-    });
-    this.buttonRestore.disabled = true;
-    this.buttonRestore.onclick = this.onRestore.bind(this);
-    let _originalContentEl = this.contentEl;
-    this.contentEl = elContent;
-    this.markdownView = new import_obsidian5.MarkdownPreviewView(this);
-    this.contentEl = _originalContentEl;
-    if (this.app.isMobile && this.isPortrait()) {
-      this.elContainer.hide();
-    }
-    this.plugin.xSync.listVersionHistory(this.path, (data) => {
-      this.versions = [];
-      if (!data || data.data.length <= 0) {
-        this.elList.createDiv({
-          text: "No version history found",
-          cls: "version-timestamp"
-        }).style.opacity = "0.5";
-        return;
-      }
-      if (data.deleted) {
-        this.type = "deleted";
-      }
-      for (let timestamp of data.data) {
-        let item = this.elList.createDiv("version-timestamp");
-        let versionItem = {
-          timestamp,
-          el: item
-        };
-        item.textContent = this.formatTimestamp(timestamp);
-        item.onclick = () => {
-          this.internalItemSelect(versionItem);
-        };
-        this.versions.push(versionItem);
-      }
-      if (this.versions.length > 0 && (!this.app.isMobile || !this.isPortrait())) {
-        this.internalItemSelect(this.versions[0]);
-      }
-    });
-  }
-  formatTimestamp(timestamp) {
-    let date = new Date(timestamp);
-    let month = date.getMonth() + 1;
-    let day = date.getDate();
-    let year = date.getFullYear();
-    let hours = date.getHours();
-    let minutes = date.getMinutes();
-    let ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    minutes = minutes < 10 ? "0" + minutes : minutes;
-    return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
-  }
-  internalItemSelect(item) {
-    this.versions.forEach((v) => v.el.removeClass("active"));
-    item.el.addClass("active");
-    this.plugin.xSync.readVersionHistory(this.path, item.timestamp, (data) => {
-      if (typeof data !== "string") {
-        data = "";
-      }
-      this.markdownView.set(data, true);
-      this.markdownView.applyScroll(0);
-    });
-    this.selectedVersion = item;
-    const isCurrentVersion = this.type === "created" && this.versions.length > 0 && this.selectedVersion.timestamp === this.versions[0].timestamp;
-    if (isCurrentVersion) {
-      this.buttonRestore.textContent = "Current";
-      this.buttonRestore.disabled = true;
-    } else {
-      this.buttonRestore.textContent = "Restore";
-      this.buttonRestore.disabled = false;
-    }
-    if (this.app.isMobile && this.isPortrait()) {
-      this.elContainer.show();
-      this.elList.hide();
-    }
-  }
-  isPortrait() {
-    return window.innerHeight > window.innerWidth;
-  }
-  async onBack() {
-    if (this.app.isMobile) {
-      this.elContainer.hide();
-      this.elList.show();
-    }
-  }
-  async onRestore() {
-    let data = this.markdownView.get();
-    let metadata = await this.plugin.xSync.getMetadata("restore", {
-      path: this.path,
-      data
-    });
-    metadata.sha1 = null;
-    await this.plugin.xSync.storage.write(this.path, data, metadata);
-    new import_obsidian5.Notice("Restored - " + this.name + " (" + this.formatTimestamp(this.selectedVersion.timestamp) + ")");
-    this.close();
-  }
-};
-
 // src/main.ts
 var import_os = require("os");
-
-// src/libs/modals/FilesHistoryModal.ts
-var import_obsidian6 = require("obsidian");
-var import_AnySocket2 = __toESM(require_AnySocket());
-var FilesHistoryModal = class extends import_obsidian6.SuggestModal {
-  constructor(plugin, deletedOnly = false, pathFilter) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.data = [];
-    this.deletedOnly = deletedOnly;
-    this.pathFilter = pathFilter;
-    if (pathFilter) {
-      this.setPlaceholder("Search settings files...");
-    } else if (this.deletedOnly) {
-      this.setPlaceholder("Search for deleted files...");
-    } else {
-      this.setPlaceholder("Search for files...");
-    }
-    this.plugin.xSync.listFilesHistory(this.deletedOnly, (data) => {
-      this.data = data;
-      this.open();
-    });
-    this.containerEl.addClass("anysocket-files-history");
-  }
-  getSuggestions(query) {
-    let items = this.pathFilter ? this.data.filter((item) => this.pathFilter(item.path)) : this.data;
-    return items.filter((item) => item.path.toLowerCase().includes(query.toLowerCase()));
-  }
-  async onChooseSuggestion(item, evt) {
-    if (Utils_default.isBinary(item.path)) {
-      let parts = item.path.split("/");
-      await this.plugin.xSync.listVersionHistory(item.path, async (data) => {
-        await this.plugin.xSync.readVersionHistory(item.path, data.data[0], async (data2) => {
-          data2 = import_AnySocket2.default.Packer.unpack(data2);
-          let metadata = await this.plugin.xSync.getMetadata("restore", {
-            path: item.path,
-            data: data2
-          });
-          metadata.sha1 = null;
-          await this.plugin.xSync.storage.writeBinary(item.path, data2, metadata);
-          new import_obsidian6.Notice("Restored - " + parts[parts.length - 1]);
-        });
-      });
-    } else {
-      new VersionHistoryModal(this.plugin, item.path);
-    }
-  }
-  renderSuggestion(value, el) {
-    el.createEl("div", { text: value.path }).addClass("item-path");
-    let prefix = "Modified: ";
-    if (this.deletedOnly) {
-      prefix = "Deleted: ";
-    }
-    el.createEl("div", { text: prefix + this.formatTimestamp(value.mtime) }).addClass("item-metadata");
-  }
-  formatTimestamp(timestamp) {
-    let date = new Date(timestamp);
-    let month = date.getMonth() + 1;
-    let day = date.getDate();
-    let year = date.getFullYear();
-    let hours = date.getHours();
-    let minutes = date.getMinutes();
-    let ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    minutes = minutes < 10 ? "0" + minutes : minutes;
-    return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
-  }
-};
-
-// src/libs/modals/ActivityLogModal.ts
-var import_obsidian7 = require("obsidian");
-var ActivityLogModal = class extends import_obsidian7.Modal {
-  constructor(plugin) {
-    super(plugin.app);
-    this.plugin = plugin;
-    this.open();
-    this.render();
-  }
-  render() {
-    this.modalEl.addClass("anysocket-activity-log");
-    this.titleEl.setText("Activity Log");
-    const log = this.plugin.xSync.activityLog;
-    if (log.length === 0) {
-      this.contentEl.createDiv({
-        text: "No sync activity yet.",
-        cls: "activity-empty"
-      }).style.opacity = "0.5";
-      return;
-    }
-    const list = this.contentEl.createDiv("activity-list");
-    for (const entry of log) {
-      const row = list.createDiv("activity-row");
-      const icon = row.createSpan("activity-icon");
-      if (entry.direction === "up") {
-        icon.setText("\u2191");
-        icon.addClass("activity-up");
-        icon.title = "Uploaded";
-      } else if (entry.direction === "down") {
-        icon.setText("\u2193");
-        icon.addClass("activity-down");
-        icon.title = "Downloaded";
-      } else {
-        icon.setText("\u2715");
-        icon.addClass("activity-delete");
-        icon.title = "Deleted";
-      }
-      const info = row.createDiv("activity-info");
-      const parts = entry.path.split("/");
-      info.createDiv({ text: parts[parts.length - 1], cls: "activity-filename" });
-      info.createDiv({ text: entry.path, cls: "activity-path" });
-      row.createDiv({ text: this.relativeTime(entry.timestamp), cls: "activity-time" });
-    }
-  }
-  relativeTime(timestamp) {
-    const diff = Math.floor((Date.now() - timestamp) / 1e3);
-    if (diff < 10)
-      return "just now";
-    if (diff < 60)
-      return `${diff}s ago`;
-    if (diff < 3600)
-      return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400)
-      return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  }
-};
-
-// src/main.ts
 var import_ua_parser_js = __toESM(require_ua_parser());
 var deviceInfo = new import_ua_parser_js.UAParser(navigator.userAgent).getDevice();
 function getDefaultDeviceName() {
@@ -6253,13 +6384,14 @@ var DEFAULT_SETTINGS = {
   syncActiveCorePlugins: true,
   syncCorePluginSettings: true,
   syncActiveCommunityPlugins: true,
-  syncInstalledCommunityPlugins: true
+  syncInstalledCommunityPlugins: true,
+  syncTrash: true
 };
 var AnySocketSyncPlugin = class extends import_obsidian8.Plugin {
   constructor() {
     super(...arguments);
     this.VERSION = "1.5.4";
-    this.BUILD = "1777649258557";
+    this.BUILD = "1777738138824";
     this.isReady = false;
   }
   async onload() {
@@ -6480,6 +6612,12 @@ var AnySocketSyncSettingTab = class extends import_obsidian8.PluginSettingTab {
     new import_obsidian8.Setting(containerEl).setName("Sync hidden files").setDesc("Include files and folders starting with a dot (e.g. .obsidian) in sync").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.syncHiddenFiles).onChange(async (value) => {
         this.plugin.settings.syncHiddenFiles = value;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian8.Setting(containerEl).setName("Sync trash").setDesc("Include the .trash folder in sync").addToggle((toggle) => {
+      toggle.setValue(this.plugin.settings.syncTrash).onChange(async (value) => {
+        this.plugin.settings.syncTrash = value;
         await this.plugin.saveSettings();
       });
     });

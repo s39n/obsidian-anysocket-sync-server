@@ -25,8 +25,22 @@ global.XStorage = new (require("./libs/fs/Storage"))(config.app_dir + "/" + conf
 global.XDB = new (require("./libs/DB"))(config.app_dir + "/" + config.data_dir + "/db");
 const SyncServer = require("./libs/server");
 const SyncCleanup = require("./libs/SyncCleanup");
+const AnySocket = require("anysocket");
+
 (async () => {
     await XStorage.init();
-    new SyncServer(config);
-    new SyncCleanup(config);
+    const syncServer = new SyncServer(config);
+    const cleanup = new SyncCleanup(config);
+
+    // Add dashboard route for the server
+    syncServer.server.router.get("/dashboard", (peer) => {
+        peer.serveFile(config.app_dir + "/client/dashboard.html", "text/html");
+    });
+    syncServer.server.router.get("/api/peers", (peer) => {
+        const peers = syncServer.getPeerList().map(p => ({
+            id: p.id,
+            data: p.data
+        }));
+        peer.status(200).header("Content-Type", "application/json").body(JSON.stringify(peers)).end();
+    });
 })();

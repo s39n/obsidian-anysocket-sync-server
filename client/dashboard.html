@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Anysocket Sync Server Dashboard</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .peer { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Anysocket Sync Server</h1>
+    <h2>Connected Peers</h2>
+    <div id="peers"></div>
+    <script>
+        fetch('/api/peers').then(r => r.json()).then(peers => {
+            const container = document.getElementById('peers');
+            peers.forEach(p => {
+                container.innerHTML += `<div class="peer">${p.id} - ${p.data.id}</div>`;
+            });
+        });
+    </script>
+</body>
+</html>
