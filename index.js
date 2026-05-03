@@ -3,6 +3,7 @@
 // TODO: - IDEA: Server commands in Obsidian (cleanup)
 
 const fs = require("fs");
+const path = require("path");
 if(!fs.existsSync("./config.js")) {
     console.log("Required \"./config.js\" is missing!\n");
 
@@ -36,10 +37,14 @@ const AnySocket = require("anysocket");
     syncServer.server.http.get("/dashboard", (peer) => {
         peer.serveFile(config.app_dir + "/client/dashboard.html", "text/html");
     });
-    syncServer.server.http.get("/api/peers", (peer) => {
-        const peers = syncServer.getPeerList().map(p => ({
-            id: p.id,
-            data: p.data
+    syncServer.server.http.get("/api/peers", async (peer) => {
+        const peers = await Promise.all(syncServer.getPeerList().map(async p => {
+            const lastOnline = p.data.id ? await XDB.devices.get(p.data.id, "last_online") : null;
+            return {
+                id: p.id,
+                data: p.data,
+                lastOnline: lastOnline
+            };
         }));
         peer.status(200).header("Content-Type", "application/json").body(JSON.stringify(peers)).end();
     });
@@ -64,14 +69,21 @@ const AnySocket = require("anysocket");
         peer.status(200).body(JSON.stringify({ success: true })).end();
     });
 
-    syncServer.server.http.get("/api/logs", (peer) => {
-        // Assuming logs might be in a standard location, adapt path if necessary
-        const logPath = config.app_dir + "/data/server.log";
-        if (fs.existsSync(logPath)) {
-            peer.status(200).header("Content-Type", "text/plain").body(fs.readFileSync(logPath)).end();
-        } else {
-            peer.status(404).body("No logs found").end();
-        }
+    syncServer.server.http.get("/api/files", (peer) => {
+        const walk = (dir) => {
+            let files = [];
+            fs.readdirSync(dir).forEach(file => {
+                const fullPath = path.join(dir, file);
+                if (fs.statSync(fullPath).isDirectory()) {
+                    files = files.concat(walk(fullPath));
+                } else {
+                    files.push(fullPath.replace(config.app_dir + "/data/files/", ""));
+                }
+            });
+            return files;
+        };
+        const files = walk(config.app_dir + "/data/files/");
+        peer.status(200).header("Content-Type", "application/json").body(JSON.stringify(files)).end();
     });
 
     syncServer.server.http.get(new RegExp("/api/delete-file/(.*)"), (peer) => {

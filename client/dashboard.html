@@ -8,22 +8,28 @@
         .actions { margin-top: 10px; }
         button { margin-right: 5px; padding: 5px 10px; cursor: pointer; }
         .danger { color: white; background: #cc0000; border: none; }
+        #fileList { list-style: none; padding: 0; }
+        #fileList li { padding: 5px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
     <h1>AnySocket Sync Server Dashboard</h1>
     <h2>Connected Peers</h2>
     <div id="peers">Loading peers...</div>
+    
     <div id="logs" style="margin-top:20px;">
         <h3>Server Logs</h3>
         <pre id="logContent" style="background: #f4f4f4; padding: 10px; height: 200px; overflow-y: scroll;"></pre>
     </div>
+
     <div style="margin-top:20px;">
-        <h3>Delete File</h3>
-        <input type="text" id="filePath" placeholder="Relative path to file">
-        <button onclick="deleteFile()">Delete File</button>
+        <h3>Synced Files (Click to Delete)</h3>
+        <input type="text" id="fileSearch" placeholder="Filter files..." onkeyup="filterFiles()" style="width: 100%; padding: 8px;">
+        <ul id="fileList" style="height: 200px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;"></ul>
     </div>
+
     <script>
+        let allFiles = [];
         async function fetchPeers() {
             const container = document.getElementById('peers');
             const res = await fetch('/api/peers');
@@ -35,6 +41,7 @@
                 div.innerHTML = `
                     <strong>Device:</strong> ${p.data.id || 'Unknown'}<br>
                     <strong>ID:</strong> ${p.id}<br>
+                    <strong>Last Seen:</strong> ${p.lastOnline ? new Date(p.lastOnline).toLocaleString() : 'N/A'}<br>
                     <div class="actions">
                         <button onclick="performAction('disconnect', '${p.id}')">Disconnect</button>
                         <button onclick="performAction('trigger-sync', '${p.id}')">Trigger Sync</button>
@@ -52,14 +59,32 @@
             if (res.ok) document.getElementById('logContent').innerText = await res.text();
             else document.getElementById('logContent').innerText = "Logs not found.";
         }
-        async function deleteFile() {
-            const path = document.getElementById('filePath').value;
-            if(!confirm("Are you sure?")) return;
-            const res = await fetch(`/api/delete-file/${encodeURIComponent(path)}`);
-            alert(res.ok ? "Deleted" : "Error");
+        async function loadFiles() {
+            const res = await fetch('/api/files');
+            allFiles = await res.json();
+            renderFiles(allFiles);
+        }
+        function renderFiles(files) {
+            const list = document.getElementById('fileList');
+            list.innerHTML = files.map(f => `<li><button class="danger" onclick="deleteFile('${encodeURIComponent(f)}')">Delete</button> ${f}</li>`).join('');
+        }
+        function filterFiles() {
+            const query = document.getElementById('fileSearch').value.toLowerCase();
+            renderFiles(allFiles.filter(f => f.toLowerCase().includes(query)));
+        }
+        async function deleteFile(path) {
+            if(!confirm("Are you sure you want to delete " + decodeURIComponent(path) + "?")) return;
+            const res = await fetch(`/api/delete-file/${path}`);
+            if(res.ok) {
+                alert("Deleted");
+                loadFiles();
+            } else {
+                alert("Error deleting file");
+            }
         }
         fetchPeers();
         loadLogs();
+        loadFiles();
         setInterval(fetchPeers, 5000);
     </script>
 </body>
