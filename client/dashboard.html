@@ -23,13 +23,13 @@
     </div>
 
     <div style="margin-top:20px;">
-        <h3>Synced Files (Click to Delete)</h3>
-        <input type="text" id="fileSearch" placeholder="Filter files..." onkeyup="filterFiles()" style="width: 100%; padding: 8px;">
+        <h3>Synced Files</h3>
+        <button onclick="deleteSelected()" class="danger">Delete Selected</button>
+        <input type="text" id="fileSearch" placeholder="Filter files..." onkeyup="filterFiles()" style="width: 100%; padding: 8px; margin-top: 5px;">
         <ul id="fileList" style="height: 200px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;"></ul>
     </div>
 
     <script>
-        let allFiles = [];
         async function fetchPeers() {
             const container = document.getElementById('peers');
             const res = await fetch('/api/peers');
@@ -66,21 +66,22 @@
         }
         function renderFiles(files) {
             const list = document.getElementById('fileList');
-            list.innerHTML = files.map(f => `<li><button class="danger" onclick="deleteFile('${encodeURIComponent(f)}')">Delete</button> ${f}</li>`).join('');
+            list.innerHTML = files.map(f => `<li><input type="checkbox" class="fileCheckbox" value="${encodeURIComponent(f)}"> ${f}</li>`).join('');
         }
         function filterFiles() {
             const query = document.getElementById('fileSearch').value.toLowerCase();
             renderFiles(allFiles.filter(f => f.toLowerCase().includes(query)));
         }
-        async function deleteFile(path) {
-            if(!confirm("Are you sure you want to delete " + decodeURIComponent(path) + "?")) return;
-            const res = await fetch(`/api/delete-file/${path}`);
-            if(res.ok) {
-                alert("Deleted");
-                loadFiles();
-            } else {
-                alert("Error deleting file");
+        async function deleteSelected() {
+            const selected = Array.from(document.querySelectorAll('.fileCheckbox:checked')).map(cb => cb.value);
+            if(selected.length === 0) return alert("Select at least one file");
+            if(!confirm("Are you sure you want to delete " + selected.length + " files?")) return;
+            
+            for(const path of selected) {
+                await fetch(`/api/delete-file/${path}`);
             }
+            alert("Delete operations complete");
+            loadFiles();
         }
         fetchPeers();
         loadLogs();
