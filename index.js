@@ -59,9 +59,29 @@ const AnySocket = require("anysocket");
         if (action === 'disconnect') {
             targetPeer.disconnect("Disconnected by admin");
         } else if (action === 'trigger-sync') {
-            // Note: Triggers sync via internal RPC call or message
             targetPeer.send({ type: "sync" });
         }
         peer.status(200).body(JSON.stringify({ success: true })).end();
+    });
+
+    syncServer.server.http.get("/api/logs", (peer) => {
+        // Assuming logs might be in a standard location, adapt path if necessary
+        const logPath = config.app_dir + "/data/server.log";
+        if (fs.existsSync(logPath)) {
+            peer.status(200).header("Content-Type", "text/plain").body(fs.readFileSync(logPath)).end();
+        } else {
+            peer.status(404).body("No logs found").end();
+        }
+    });
+
+    syncServer.server.http.get(new RegExp("/api/delete-file/(.*)"), (peer) => {
+        const path = decodeURIComponent(peer.url.split('/api/delete-file/')[1]);
+        const fullPath = config.app_dir + "/data/files/" + path;
+        if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+            peer.status(200).body("Deleted").end();
+        } else {
+            peer.status(404).body("File not found").end();
+        }
     });
 })();

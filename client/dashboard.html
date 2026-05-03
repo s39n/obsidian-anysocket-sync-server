@@ -14,6 +14,15 @@
     <h1>AnySocket Sync Server Dashboard</h1>
     <h2>Connected Peers</h2>
     <div id="peers">Loading peers...</div>
+    <div id="logs" style="margin-top:20px;">
+        <h3>Server Logs</h3>
+        <pre id="logContent" style="background: #f4f4f4; padding: 10px; height: 200px; overflow-y: scroll;"></pre>
+    </div>
+    <div style="margin-top:20px;">
+        <h3>Delete File</h3>
+        <input type="text" id="filePath" placeholder="Relative path to file">
+        <button onclick="deleteFile()">Delete File</button>
+    </div>
     <script>
         async function fetchPeers() {
             const container = document.getElementById('peers');
@@ -38,7 +47,19 @@
             await fetch(`/api/action/${action}/${peerId}`);
             fetchPeers();
         }
+        async function loadLogs() {
+            const res = await fetch('/api/logs');
+            if (res.ok) document.getElementById('logContent').innerText = await res.text();
+            else document.getElementById('logContent').innerText = "Logs not found.";
+        }
+        async function deleteFile() {
+            const path = document.getElementById('filePath').value;
+            if(!confirm("Are you sure?")) return;
+            const res = await fetch(`/api/delete-file/${encodeURIComponent(path)}`);
+            alert(res.ok ? "Deleted" : "Error");
+        }
         fetchPeers();
+        loadLogs();
         setInterval(fetchPeers, 5000);
     </script>
 </body>
