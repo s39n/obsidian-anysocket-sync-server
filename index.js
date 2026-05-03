@@ -43,4 +43,25 @@ const AnySocket = require("anysocket");
         }));
         peer.status(200).header("Content-Type", "application/json").body(JSON.stringify(peers)).end();
     });
+
+    syncServer.server.http.get(new RegExp("/api/action/(.*)/(.*)"), (peer) => {
+        const path = peer.url;
+        const parts = path.split('/');
+        const action = parts[3];
+        const peerId = parts[4];
+        
+        const targetPeer = syncServer.getPeerList().find(p => p.id === peerId);
+        if (!targetPeer) {
+            peer.status(404).body(JSON.stringify({ error: "Peer not found" })).end();
+            return;
+        }
+
+        if (action === 'disconnect') {
+            targetPeer.disconnect("Disconnected by admin");
+        } else if (action === 'trigger-sync') {
+            // Note: Triggers sync via internal RPC call or message
+            targetPeer.send({ type: "sync" });
+        }
+        peer.status(200).body(JSON.stringify({ success: true })).end();
+    });
 })();
