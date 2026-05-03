@@ -33,10 +33,10 @@ const AnySocket = require("anysocket");
     const cleanup = new SyncCleanup(config);
 
     // Add dashboard route for the server
-    syncServer.server.router.get("/dashboard", (peer) => {
+    syncServer.server.http.get("/dashboard", (peer) => {
         peer.serveFile(config.app_dir + "/client/dashboard.html", "text/html");
     });
-    syncServer.server.router.get("/api/peers", (peer) => {
+    syncServer.server.http.get("/api/peers", (peer) => {
         const peers = syncServer.getPeerList().map(p => ({
             id: p.id,
             data: p.data
