@@ -8,17 +8,19 @@
         :root {
             --bg: #0f172a;
             --sidebar-bg: #1e293b;
-            --card-bg: #ffffff;
             --text-main: #f8fafc;
             --text-dark: #1e293b;
             --text-dim: #94a3b8;
             --accent: #3b82f6;
             --danger: #ef4444;
+            --success: #10b981;
             --border: #e2e8f0;
         }
 
-        body { 
-            font-family: 'Inter', system-ui, sans-serif; 
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
             background-color: var(--bg);
             color: var(--text-main);
             margin: 0;
@@ -27,18 +29,58 @@
             height: 100vh;
         }
 
-        /* Sidebar & Navigation */
+        /* Login overlay */
+        #loginOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.96);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        #loginOverlay.visible { display: flex; }
+        .login-box {
+            background: var(--sidebar-bg);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 2rem;
+            width: 320px;
+        }
+        .login-box h2 { margin: 0 0 1.5rem; color: var(--accent); font-size: 1.25rem; }
+        .login-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text-main);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+        .login-box button {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        #loginError { color: var(--danger); font-size: 0.85rem; margin-top: 0.75rem; display: none; }
+
+        /* Sidebar */
         aside {
             background: var(--sidebar-bg);
             padding: 1.5rem;
             border-right: 1px solid #334155;
             display: flex;
             flex-direction: column;
-            gap: 2rem;
+            gap: 1.5rem;
+            overflow-y: auto;
         }
-
         h1 { font-size: 1.25rem; color: var(--accent); margin: 0; }
-        
         .status-badge {
             background: #10b98122;
             color: #10b981;
@@ -48,7 +90,7 @@
             display: inline-block;
         }
 
-        /* Main Content Layout */
+        /* Main */
         main {
             background: #f1f5f9;
             color: var(--text-dark);
@@ -59,29 +101,64 @@
             gap: 2rem;
         }
 
-        /* Cards & Containers */
+        /* Stats bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgb(0 0 0 / 0.07);
+        }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--accent); }
+        .stat-label { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+
+        /* Cards */
         .glass-card {
             background: white;
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07);
             border: 1px solid var(--border);
         }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .section-header h2 { margin: 0; font-size: 1.1rem; }
 
-        /* Peer Cards */
-        #peers { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
-        .peer { border: 1px solid var(--border); padding: 1rem; border-radius: 8px; background: #f8fafc; }
-        .peer strong { font-size: 0.9rem; color: var(--text-dim); }
+        /* Peer / device grids */
+        .peer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1rem; }
+        .peer-card {
+            border: 1px solid var(--border);
+            padding: 1rem;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        .peer-card.offline { opacity: 0.6; }
+        .peer-name { font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+        .peer-meta { font-size: 0.8rem; color: var(--text-dim); }
+        .peer-actions { margin-top: 10px; display: flex; gap: 6px; }
 
-        /* File Grid & List */
+        /* Status dots */
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+        .dot.online  { background: var(--success); }
+        .dot.offline { background: var(--text-dim); }
+
+        /* File view */
         .file-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .view-controls button { background: none; border: 1px solid var(--border); cursor: pointer; padding: 5px 10px; border-radius: 4px; }
+        .view-controls button {
+            background: none; border: 1px solid var(--border);
+            cursor: pointer; padding: 5px 10px; border-radius: 4px; font-size: 0.9rem;
+        }
         .view-controls button.active { background: var(--accent); color: white; border-color: var(--accent); }
 
         .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; }
         .file-item-card {
             background: white; border: 1px solid var(--border); border-radius: 8px;
-            padding: 1rem; text-align: center; position: relative; transition: 0.2s;
+            padding: 1rem; text-align: center; position: relative; transition: 0.15s;
+            cursor: default;
         }
         .file-item-card:hover { border-color: var(--accent); transform: translateY(-2px); }
         .file-icon { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
@@ -89,59 +166,144 @@
         .file-meta { font-size: 0.7rem; color: var(--text-dim); }
         .file-checkbox-overlay { position: absolute; top: 8px; left: 8px; }
 
-        /* List View Styling */
+        /* Table */
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-        th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-dim); }
-        td { padding: 12px; border-bottom: 1px solid var(--border); }
+        th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); color: var(--text-dim); font-weight: 600; }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        tr:hover td { background: #f8fafc; }
 
         /* Buttons */
-        button.danger { background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
-        button.action { background: #e2e8f0; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; margin-top: 5px; }
+        button.danger { background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+        button.action { background: #e2e8f0; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
+        button.action:hover { background: #cbd5e1; }
+        button.action.red { background: #fee2e2; color: var(--danger); }
+        button.action.red:hover { background: #fecaca; }
 
-        #logContent { background: #1e293b; color: #94a3b8; font-family: monospace; padding: 1rem; border-radius: 8px; font-size: 0.8rem; max-height: 200px; overflow-y: auto; }
+        /* Logs */
+        #logContent {
+            background: #0f172a; color: #94a3b8; font-family: monospace;
+            padding: 1rem; border-radius: 8px; font-size: 0.72rem;
+            max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+            margin-top: 0.5rem;
+        }
+
+        .empty-state { color: var(--text-dim); font-size: 0.9rem; padding: 0.5rem 0; }
     </style>
 </head>
 <body>
 
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2>AnySocket Sync</h2>
+            <input type="password" id="loginPassword" placeholder="Server password"
+                   onkeydown="if(event.key==='Enter') doLogin()">
+            <button onclick="doLogin()">Sign In</button>
+            <div id="loginError">Incorrect password.</div>
+        </div>
+    </div>
+
     <aside>
-        <h1>AnySocket Sync</h1>
-        <div class="status-badge">● Server Online</div>
-        
+        <div>
+            <h1>AnySocket Sync</h1>
+            <div class="status-badge" style="margin-top: 8px;">&#9679; Server Online</div>
+        </div>
+
         <div style="margin-top: auto;">
-            <h3 style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;">Server Logs</h3>
-            <pre id="logContent">Loading logs...</pre>
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">
+                Server Logs
+            </div>
+            <pre id="logContent">Loading...</pre>
         </div>
     </aside>
 
     <main>
-        <section>
-            <h2 style="margin-top: 0;">Active Peers</h2>
-            <div id="peers">Loading peers...</div>
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-value" id="statPeers">—</div>
+                <div class="stat-label">Connected Peers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statFiles">—</div>
+                <div class="stat-label">Synced Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statSize">—</div>
+                <div class="stat-label">Total Storage</div>
+            </div>
+        </div>
+
+        <section class="glass-card">
+            <div class="section-header"><h2>Active Peers</h2></div>
+            <div id="peers" class="peer-grid"><div class="empty-state">Loading...</div></div>
+        </section>
+
+        <section class="glass-card">
+            <div class="section-header"><h2>Known Devices</h2></div>
+            <div id="devices" class="peer-grid"><div class="empty-state">Loading...</div></div>
         </section>
 
         <section class="glass-card">
             <div class="file-controls">
                 <div style="display: flex; align-items: center; gap: 1rem;">
-                    <h2 style="margin: 0;">Synced Files</h2>
+                    <h2 style="margin: 0; font-size: 1.1rem;">Synced Files</h2>
                     <div class="view-controls">
-                        <button id="gridBtn" onclick="setView('grid')" class="active">⊞</button>
-                        <button id="listBtn" onclick="setView('list')">≡</button>
+                        <button id="gridBtn" onclick="setView('grid')" class="active">&#8862;</button>
+                        <button id="listBtn" onclick="setView('list')">&#8801;</button>
                     </div>
                 </div>
                 <button onclick="deleteSelected()" class="danger">Delete Selected</button>
             </div>
 
-            <input type="text" id="fileSearch" placeholder="Filter files by name..." onkeyup="filterFiles()" 
-                   style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1.5rem;">
+            <input type="text" id="fileSearch" placeholder="Filter files by name..." onkeyup="filterFiles()"
+                   style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.9rem;">
 
-            <div id="fileContainer" class="file-grid">
-                </div>
+            <div id="fileContainer" class="file-grid"></div>
         </section>
     </main>
 
     <script>
         let allFiles = [];
         let currentView = 'grid';
+
+        // --- Auth ---
+
+        function showLogin() {
+            document.getElementById('loginOverlay').classList.add('visible');
+        }
+        function hideLogin() {
+            document.getElementById('loginOverlay').classList.remove('visible');
+        }
+
+        async function doLogin() {
+            const password = document.getElementById('loginPassword').value;
+            const errEl = document.getElementById('loginError');
+            errEl.style.display = 'none';
+            try {
+                const res = await fetch('/api/login', {
+                    headers: { 'X-Dashboard-Password': password }
+                });
+                if (res.ok) {
+                    hideLogin();
+                    init();
+                } else {
+                    errEl.style.display = 'block';
+                }
+            } catch (e) {
+                errEl.textContent = 'Connection error.';
+                errEl.style.display = 'block';
+            }
+        }
+
+        async function apiFetch(url, options = {}) {
+            const res = await fetch(url, options);
+            if (res.status === 401) {
+                showLogin();
+                throw new Error('Unauthorized');
+            }
+            return res;
+        }
+
+        // --- Utilities ---
 
         function formatBytes(bytes) {
             if (bytes === 0) return '0 B';
@@ -152,48 +314,103 @@
         }
 
         function getFileIcon(filename) {
-            const ext = filename.split('.').pop().toLowerCase();
-            const icons = { pdf: '📄', jpg: '🖼️', jpeg: '🖼️', png: '🖼️', mp4: '🎬', zip: '📦', txt: '📝' };
-            return icons[ext] || '📁';
+            const ext = (filename.split('.').pop() || '').toLowerCase();
+            const icons = { pdf: '&#128196;', jpg: '&#128247;', jpeg: '&#128247;', png: '&#128247;',
+                            gif: '&#128247;', mp4: '&#127916;', zip: '&#128230;', txt: '&#128221;', md: '&#128221;' };
+            return icons[ext] || '&#128193;';
         }
+
+        function basename(p) {
+            return p.split(/[/\\]/).pop() || p;
+        }
+
+        // --- Active peers ---
 
         async function fetchPeers() {
             const container = document.getElementById('peers');
-            const res = await fetch('/api/peers');
+            const res = await apiFetch('/api/peers');
             const peers = await res.json();
+            document.getElementById('statPeers').textContent = peers.length;
+            if (peers.length === 0) {
+                container.innerHTML = '<div class="empty-state">No active connections.</div>';
+                return;
+            }
             container.innerHTML = peers.map(p => `
-                <div class="peer">
-                    <div style="font-weight: 700;">${p.data.id || 'Unknown Device'}</div>
-                    <div style="font-family: monospace; font-size: 0.75rem; color: var(--text-dim);">${p.id}</div>
-                    <div style="margin-top: 8px; font-size: 0.8rem;">Seen: ${p.lastOnline ? new Date(p.lastOnline).toLocaleTimeString() : 'N/A'}</div>
-                    <button class="action" onclick="performAction('trigger-sync', '${p.id}')">Sync</button>
-                    <button class="action" onclick="performAction('disconnect', '${p.id}')">Drop</button>
+                <div class="peer-card">
+                    <div class="peer-name"><span class="dot online"></span>${escHtml(p.data.id || 'Unknown')}</div>
+                    <div class="peer-meta">Conn: ${escHtml(p.id)}</div>
+                    <div class="peer-meta">Last seen: ${p.lastOnline ? new Date(p.lastOnline).toLocaleString() : 'N/A'}</div>
+                    <div class="peer-actions">
+                        <button class="action" onclick="performAction('trigger-sync','${escAttr(p.id)}')">Sync</button>
+                        <button class="action red" onclick="performAction('disconnect','${escAttr(p.id)}')">Disconnect</button>
+                    </div>
                 </div>
             `).join('');
         }
 
+        async function performAction(action, peerId) {
+            if (action === 'disconnect' && !confirm('Disconnect this peer?')) return;
+            await apiFetch('/api/action/' + action + '/' + encodeURIComponent(peerId));
+            fetchPeers();
+        }
+
+        // --- Known devices ---
+
+        async function fetchDevices() {
+            const container = document.getElementById('devices');
+            const res = await apiFetch('/api/devices');
+            const devices = await res.json();
+            if (devices.length === 0) {
+                container.innerHTML = '<div class="empty-state">No known devices yet.</div>';
+                return;
+            }
+            container.innerHTML = devices.map(d => `
+                <div class="peer-card ${d.connected ? '' : 'offline'}">
+                    <div class="peer-name">
+                        <span class="dot ${d.connected ? 'online' : 'offline'}"></span>${escHtml(d.id)}
+                    </div>
+                    <div class="peer-meta">${d.connected ? 'Online' : 'Offline'}</div>
+                    <div class="peer-meta">Last seen: ${d.lastOnline ? new Date(d.lastOnline).toLocaleString() : 'Never'}</div>
+                </div>
+            `).join('');
+        }
+
+        // --- Files ---
+
         async function loadFiles() {
-            const res = await fetch('/api/files');
+            const res = await apiFetch('/api/files');
             allFiles = await res.json();
-            renderFiles(allFiles);
+            const totalSize = allFiles.reduce((sum, f) => sum + f.size, 0);
+            document.getElementById('statFiles').textContent = allFiles.length;
+            document.getElementById('statSize').textContent = formatBytes(totalSize);
+            renderFiles(getFilteredFiles());
+        }
+
+        function getFilteredFiles() {
+            const q = document.getElementById('fileSearch').value.toLowerCase();
+            return q ? allFiles.filter(f => f.path.toLowerCase().includes(q)) : allFiles;
         }
 
         function setView(view) {
             currentView = view;
             document.getElementById('gridBtn').classList.toggle('active', view === 'grid');
             document.getElementById('listBtn').classList.toggle('active', view === 'list');
-            document.getElementById('fileContainer').className = view === 'grid' ? 'file-grid' : 'file-list';
-            renderFiles(allFiles);
+            document.getElementById('fileContainer').className = view === 'grid' ? 'file-grid' : '';
+            renderFiles(getFilteredFiles());
         }
 
         function renderFiles(files) {
             const container = document.getElementById('fileContainer');
+            if (files.length === 0) {
+                container.innerHTML = '<div class="empty-state">No files found.</div>';
+                return;
+            }
             if (currentView === 'grid') {
                 container.innerHTML = files.map(f => `
                     <div class="file-item-card">
                         <input type="checkbox" class="fileCheckbox file-checkbox-overlay" value="${encodeURIComponent(f.path)}">
                         <span class="file-icon">${getFileIcon(f.path)}</span>
-                        <span class="file-name" title="${f.path}">${f.path}</span>
+                        <span class="file-name" title="${escHtml(f.path)}">${escHtml(basename(f.path))}</span>
                         <div class="file-meta">${formatBytes(f.size)}</div>
                     </div>
                 `).join('');
@@ -201,15 +418,18 @@
                 container.innerHTML = `
                     <table>
                         <thead>
-                            <tr><th></th><th>Name</th><th>Size</th><th>Modified</th></tr>
+                            <tr>
+                                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+                                <th>Name</th><th>Size</th><th>Modified</th>
+                            </tr>
                         </thead>
                         <tbody>
                             ${files.map(f => `
                                 <tr>
                                     <td><input type="checkbox" class="fileCheckbox" value="${encodeURIComponent(f.path)}"></td>
-                                    <td style="font-weight: 600;">${getFileIcon(f.path)} ${f.path}</td>
+                                    <td>${getFileIcon(f.path)} ${escHtml(f.path)}</td>
                                     <td>${formatBytes(f.size)}</td>
-                                    <td style="color: var(--text-dim)">${new Date(f.mtime).toLocaleDateString()}</td>
+                                    <td style="color:var(--text-dim)">${new Date(f.mtime).toLocaleDateString()}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -217,25 +437,62 @@
             }
         }
 
-        function filterFiles() {
-            const query = document.getElementById('fileSearch').value.toLowerCase();
-            renderFiles(allFiles.filter(f => f.path.toLowerCase().includes(query)));
+        function toggleSelectAll(cb) {
+            document.querySelectorAll('.fileCheckbox').forEach(el => el.checked = cb.checked);
         }
 
+        function filterFiles() {
+            renderFiles(getFilteredFiles());
+        }
+
+        async function deleteSelected() {
+            const checked = [...document.querySelectorAll('.fileCheckbox:checked')];
+            if (checked.length === 0) { alert('No files selected.'); return; }
+            if (!confirm(`Delete ${checked.length} file(s)? This cannot be undone.`)) return;
+            await Promise.all(checked.map(cb =>
+                apiFetch('/api/delete-file/' + cb.value, { method: 'DELETE' })
+            ));
+            await loadFiles();
+        }
+
+        // --- Logs ---
+
         async function loadLogs() {
-            const res = await fetch('/api/logs');
-            if (res.ok) {
-                const text = await res.text();
-                const logEl = document.getElementById('logContent');
-                logEl.innerText = text;
-                logEl.scrollTop = logEl.scrollHeight;
+            try {
+                const res = await apiFetch('/api/logs');
+                if (res.ok) {
+                    const text = await res.text();
+                    const el = document.getElementById('logContent');
+                    el.textContent = text;
+                    el.scrollTop = el.scrollHeight;
+                }
+            } catch (e) { /* 401 handled by apiFetch */ }
+        }
+
+        // --- XSS helpers ---
+
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function escAttr(s) {
+            return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+        }
+
+        // --- Bootstrap ---
+
+        async function init() {
+            try {
+                await Promise.all([fetchPeers(), fetchDevices(), loadFiles(), loadLogs()]);
+            } catch (e) {
+                if (e.message !== 'Unauthorized') console.error(e);
             }
         }
 
-        // Init
-        fetchPeers(); loadFiles(); loadLogs();
-        setInterval(fetchPeers, 5000);
-        setInterval(loadLogs, 10000);
+        init();
+        setInterval(fetchPeers,   5000);
+        setInterval(fetchDevices, 10000);
+        setInterval(loadFiles,    30000);
+        setInterval(loadLogs,     10000);
     </script>
 </body>
 </html>
