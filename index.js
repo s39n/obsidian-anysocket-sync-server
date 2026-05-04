@@ -23,15 +23,23 @@ config.app_dir = __dirname;
 config.data_dir = "data";
 
 const Helpers = require("./libs/helpers");
+const util = require("util");
 
 // In-memory log ring buffer — captured before any other require that might log
 const logBuffer = [];
-const _origLog = console.log;
-console.log = (...args) => {
-    _origLog(...args);
-    logBuffer.push(`[${new Date().toISOString()}] ${args.join(' ')}`);
+function formatArgs(args) {
+    return args.map(a => typeof a === 'string' ? a : util.inspect(a, { depth: 3, breakLength: Infinity })).join(' ');
+}
+function pushLog(prefix, args) {
+    logBuffer.push(`[${new Date().toISOString()}]${prefix} ${formatArgs(args)}`);
     if (logBuffer.length > 200) logBuffer.shift();
-};
+}
+const _origLog = console.log;
+console.log = (...args) => { _origLog(...args); pushLog('', args); };
+const _origError = console.error;
+console.error = (...args) => { _origError(...args); pushLog(' [ERROR]', args); };
+const _origWarn = console.warn;
+console.warn = (...args) => { _origWarn(...args); pushLog(' [WARN]', args); };
 
 global.XStorage = new (require("./libs/fs/Storage"))(config.app_dir + "/" + config.data_dir + "/files/");
 global.XDB = new (require("./libs/DB"))(config.app_dir + "/" + config.data_dir + "/db");

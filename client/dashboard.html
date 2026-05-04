@@ -458,15 +458,18 @@
         // --- Logs ---
 
         async function loadLogs() {
+            const el = document.getElementById('logContent');
             try {
                 const res = await apiFetch('/api/logs');
                 if (res.ok) {
-                    const text = await res.text();
-                    const el = document.getElementById('logContent');
-                    el.textContent = text;
+                    el.textContent = await res.text();
                     el.scrollTop = el.scrollHeight;
+                } else {
+                    el.textContent = `[HTTP ${res.status}]`;
                 }
-            } catch (e) { /* 401 handled by apiFetch */ }
+            } catch (e) {
+                if (e.message !== 'Unauthorized') el.textContent = '[Connection error]';
+            }
         }
 
         // --- XSS helpers ---
